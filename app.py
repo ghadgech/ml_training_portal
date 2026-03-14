@@ -2,20 +2,18 @@ import streamlit as st
 import pandas as pd
 import random
 import matplotlib.pyplot as plt
-import openai
+from openai import OpenAI
 
 st.set_page_config(page_title="ML Training Portal")
 
 # --------------------------
-# OPENAI API
+# OPENAI
 # --------------------------
 
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --------------------------
-# LOGIN FUNCTIONS
+# LOGIN
 # --------------------------
 
 def login_user(username,password):
@@ -40,58 +38,50 @@ def login_user(username,password):
 # SAVE RESULTS
 # --------------------------
 
-def save_result(username,name,batch,score,total):
+def save_result(username,name,batch,score,total,quiz_type):
 
     result = pd.DataFrame({
 
     "username":[username],
     "name":[name],
     "batch":[batch],
+    "quiz":[quiz_type],
     "score":[score],
     "total":[total]
 
     })
 
     try:
-
         old = pd.read_csv("results.csv")
-
         new = pd.concat([old,result])
-
     except:
-
         new = result
 
     new.to_csv("results.csv",index=False)
 
-    return new
-
 
 # --------------------------
-# COURSE MODULES
+# MODULES
 # --------------------------
 
 modules = {
 
-1:{
-"title":"Python for Machine Learning",
+"Python for Machine Learning":{
 "content":"Python libraries used in ML include NumPy, Pandas and scikit-learn."
 },
 
-2:{
-"title":"Data Preprocessing",
+"Data Preprocessing":{
 "content":"Preprocessing includes scaling, encoding and handling missing data."
 },
 
-3:{
-"title":"Regression",
+"Regression Models":{
 "content":"Regression models predict numeric values such as price or sales."
 }
 
 }
 
 # --------------------------
-# QUESTION BANK
+# QUESTION BANK (ADD UP TO 25)
 # --------------------------
 
 question_bank = [
@@ -127,13 +117,36 @@ question_bank = [
 "K-Means"
 ],
 "answer":"Logistic Regression"
+},
+
+{
+"question":"Which library is used for data manipulation?",
+"options":[
+"Pandas",
+"TensorFlow",
+"Keras",
+"Seaborn"
+],
+"answer":"Pandas"
+},
+
+{
+"question":"Which library is used for numerical computation?",
+"options":[
+"NumPy",
+"Pandas",
+"Matplotlib",
+"Plotly"
+],
+"answer":"NumPy"
 }
 
 ]
 
 def generate_quiz():
 
-    return random.sample(question_bank,3)
+    return random.sample(question_bank, min(5,len(question_bank)))
+
 
 # --------------------------
 # SESSION
@@ -171,12 +184,14 @@ if not st.session_state.logged_in:
 
             st.error("Invalid credentials")
 
+
 # --------------------------
 # MAIN PORTAL
 # --------------------------
 
 if st.session_state.logged_in:
 
+    st.sidebar.title("Student Portal")
     st.sidebar.write(f"Student: {st.session_state.name}")
     st.sidebar.write(f"Batch: {st.session_state.batch}")
 
@@ -186,7 +201,8 @@ if st.session_state.logged_in:
 
         [
         "Learn Modules",
-        "Take Quiz",
+        "Pre Quiz",
+        "Post Quiz",
         "Instructor Dashboard",
         "AI Tutor"
         ]
@@ -201,17 +217,18 @@ if st.session_state.logged_in:
 
         module = st.selectbox("Select Module",list(modules.keys()))
 
-        st.header(modules[module]["title"])
+        st.header(module)
 
         st.write(modules[module]["content"])
+
 
 # --------------------------
 # QUIZ
 # --------------------------
 
-    if page=="Take Quiz":
+    if page in ["Pre Quiz","Post Quiz"]:
 
-        st.title("Machine Learning Quiz")
+        st.title(page)
 
         if st.button("Start Quiz"):
 
@@ -246,18 +263,18 @@ if st.session_state.logged_in:
                 for i,q in enumerate(questions):
 
                     if answers[i]==q["answer"]:
-
                         score+=1
 
                 st.success(f"Score: {score}/{len(questions)}")
 
-                data=save_result(
+                save_result(
 
                     st.session_state.username,
                     st.session_state.name,
                     st.session_state.batch,
                     score,
-                    len(questions)
+                    len(questions),
+                    page
 
                 )
 
@@ -299,19 +316,17 @@ if st.session_state.logged_in:
 
         if st.button("Ask AI"):
 
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
 
                 model="gpt-4o-mini",
 
                 messages=[
-                    {"role":"system",
-                     "content":"You are a helpful machine learning tutor."},
-
-                    {"role":"user",
-                     "content":question}
+                    {"role":"system","content":"You are a helpful machine learning tutor."},
+                    {"role":"user","content":question}
                 ]
+
             )
 
-            answer=response["choices"][0]["message"]["content"]
+            answer=response.choices[0].message.content
 
             st.write(answer)
