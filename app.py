@@ -11,6 +11,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openai import OpenAI
 import streamlit.components.v1 as components
+import re
 
 st.set_page_config(page_title="ML Training Portal", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
@@ -803,6 +804,147 @@ def show_instructor_dashboard():
     st.dataframe(df.sort_values(sort_col, ascending=False), use_container_width=True, hide_index=True)
     st.download_button("📥 Download All Results (CSV)", df.to_csv(index=False), "all_results.csv", "text/csv")
 
+# ── PAGE: PODCAST ────────────────────────────────────────────────────────────
+def generate_podcast_script(module_name, module_data, custom_topic, length):
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    exchanges = {"Short (~2 min)": 10, "Medium (~5 min)": 22, "Long (~8 min)": 38}[length]
+    topics_str = "\n".join(f"- {t}" for t in module_data["topics"])
+    focus = f"Focus specifically on: {custom_topic}" if custom_topic.strip() else f"Cover these key topics:\n{topics_str}"
+    prompt = f"""Write an engaging, educational podcast script about "{module_name}" for an ML training course.
+
+{focus}
+
+FORMAT RULES — follow exactly:
+- Use [ALEX]: and [SAM]: as speaker labels, one line each
+- ALEX: enthusiastic lead host, explains concepts clearly with analogies
+- SAM: curious co-host, asks great follow-up questions, adds real-world examples
+- Aim for {exchanges} total exchanges
+- Start with a short intro (ALEX welcomes listeners, introduces topic)
+- End with a brief summary and takeaway
+- Keep language simple, conversational, and engaging — avoid jargon without explanation
+- Do NOT use asterisks, markdown, or special characters in the speech text
+- Each line of dialogue should be 1-3 sentences max
+
+Example format:
+[ALEX]: Welcome to ML Insights! Today we're exploring a topic that powers everything from Netflix recommendations to medical diagnosis.
+[SAM]: I've heard a lot about this — where do we even begin?
+[ALEX]: Great question! Let's start with the basics..."""
+
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a professional educational podcast scriptwriter. You write clear, engaging, accurate ML content for learners."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=3500
+    )
+    return resp.choices[0].message.content
+
+def script_to_audio(script_text):
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    segments = re.findall(r'\[(ALEX|SAM)\]:\s*(.+?)(?=\n\[(?:ALEX|SAM)\]:|$)', script_text, re.DOTALL)
+    voices = {"ALEX": "alloy", "SAM": "nova"}
+    audio_bytes = b""
+    for speaker, text in segments:
+        text = text.strip()
+        if not text:
+            continue
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=voices.get(speaker, "alloy"),
+            input=text
+        )
+        audio_bytes += response.content
+    return audio_bytes
+
+def show_podcast():
+    st.markdown("## 🎙️ AI Podcast Generator")
+    st.markdown("Generate a **NotebookLM-style audio podcast** with two hosts discussing any ML module.")
+
+    # Init session state
+    for k, v in {"pod_script": None, "pod_audio": None, "pod_module": ""}.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+    col1, col2 = st.columns(2)
+    with col1:
+        module_choice = st.selectbox("Select Module:", list(COURSE_MODULES.keys()))
+    with col2:
+        length = st.selectbox("Podcast Length:", ["Short (~2 min)", "Medium (~5 min)", "Long (~8 min)"])
+
+    custom_topic = st.text_input(
+        "Optional: Focus on a specific topic",
+        placeholder="e.g. 'explain overfitting with a cricket analogy' or leave blank for full module"
+    )
+
+    st.markdown("")
+    c1, c2 = st.columns([1, 3])
+    with c1:
+        gen_btn = st.button("🎙️ Generate Podcast", type="primary", use_container_width=True)
+    with c2:
+        st.caption("⏱️ Short ~20s · Medium ~45s · Long ~90s to generate  |  Uses OpenAI TTS + GPT-4o-mini")
+
+    if gen_btn:
+        st.session_state.pod_script = None
+        st.session_state.pod_audio = None
+        st.session_state.pod_module = module_choice
+
+        with st.spinner("✍️ Writing podcast script with two hosts..."):
+            try:
+                script = generate_podcast_script(
+                    module_choice, COURSE_MODULES[module_choice], custom_topic, length
+                )
+                st.session_state.pod_script = script
+            except Exception as e:
+                st.error(f"Script generation failed: {e}")
+                return
+
+        with st.spinner("🔊 Converting to audio with two voices (Alex + Sam)..."):
+            try:
+                audio = script_to_audio(st.session_state.pod_script)
+                st.session_state.pod_audio = audio
+            except Exception as e:
+                st.error(f"Audio generation failed: {e}")
+
+    # Display results if available
+    if st.session_state.pod_audio:
+        st.markdown("---")
+        st.success(f"Podcast ready: **{st.session_state.pod_module}**")
+
+        # Audio player
+        st.markdown("### 🔊 Listen")
+        st.audio(st.session_state.pod_audio, format="audio/mp3")
+        fname = st.session_state.pod_module.split(":")[0].replace(" ", "_")
+        st.download_button(
+            "📥 Download Podcast (MP3)",
+            st.session_state.pod_audio,
+            file_name=f"ML_Podcast_{fname}.mp3",
+            mime="audio/mpeg",
+            use_container_width=False
+        )
+
+        # Script display
+        st.markdown("### 📄 Podcast Script")
+        lines = [l.strip() for l in st.session_state.pod_script.strip().split("\n") if l.strip()]
+        for line in lines:
+            m = re.match(r'\[(ALEX|SAM)\]:\s*(.*)', line)
+            if m:
+                speaker, text = m.group(1), m.group(2)
+                if speaker == "ALEX":
+                    st.markdown(
+                        f'<div style="background:#e8f4fd;border-left:5px solid #3498db;'
+                        f'padding:0.7rem 1rem;margin:0.35rem 0;border-radius:0 10px 10px 0">'
+                        f'<b style="color:#3498db">🎤 Alex</b>&nbsp;&nbsp;{text}</div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        f'<div style="background:#fef9e7;border-left:5px solid #e67e22;'
+                        f'padding:0.7rem 1rem;margin:0.35rem 0;border-radius:0 10px 10px 0">'
+                        f'<b style="color:#e67e22">🎤 Sam</b>&nbsp;&nbsp;&nbsp;{text}</div>',
+                        unsafe_allow_html=True
+                    )
+
 # ── PAGE: AI TUTOR ────────────────────────────────────────────────────────────
 def show_ai_tutor():
     st.markdown("## 🤖 AI Tutor")
@@ -1476,7 +1618,8 @@ else:
         st.caption(f"Batch: {st.session_state.batch}  |  ID: {st.session_state.username}")
         st.markdown("---")
         menu = ["🏠 Home", "📚 Course Content", "🖥️ Presentation", "🧩 Mind Map",
-                "📝 Pre Quiz", "✅ Post Quiz", "📊 My Results"]
+                "📝 Pre Quiz", "✅ Post Quiz", "📊 My Results",
+                "🎙️ Podcast"]
         if is_instructor(st.session_state.username):
             menu.append("🎓 Instructor Dashboard")
         menu.append("🤖 AI Tutor")
@@ -1501,6 +1644,8 @@ else:
         show_presentation()
     elif page == "🧩 Mind Map":
         show_mind_map()
+    elif page == "🎙️ Podcast":
+        show_podcast()
     elif page == "🎓 Instructor Dashboard":
         show_instructor_dashboard()
     elif page == "🤖 AI Tutor":
