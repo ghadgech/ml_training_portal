@@ -10,6 +10,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openai import OpenAI
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="ML Training Portal", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
@@ -1264,95 +1265,206 @@ def show_presentation():
 # ── PAGE: MIND MAP ────────────────────────────────────────────────────────────
 def show_mind_map():
     st.markdown("## 🧩 ML Course Mind Map")
-    st.markdown("Visual overview of all 8 modules and their key concepts.")
+    st.markdown("**Click any module** to expand or collapse its topics.  Scroll to zoom · Drag to pan.")
 
-    import numpy as np
+    html = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#f0f4ff;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden}
+svg{width:100%;height:730px;display:block}
+.link{fill:none;stroke-opacity:.55;stroke-width:2.5}
+.topic-link{fill:none;stroke-opacity:.45;stroke-width:1.8}
+.mod-circle{cursor:pointer;stroke:white;stroke-width:3;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.25));transition:all .15s}
+.mod-circle:hover{stroke-width:4;filter:drop-shadow(0 5px 14px rgba(0,0,0,.35))}
+.mod-label{pointer-events:none;font-weight:700;fill:white;dominant-baseline:central;text-anchor:middle}
+.topic-rect{rx:14;ry:14;cursor:default}
+.topic-text{pointer-events:none;font-weight:700;dominant-baseline:central;text-anchor:middle;font-size:11px}
+.tip{position:absolute;background:white;border-radius:10px;padding:9px 14px;font-size:12px;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none;opacity:0;
+  transition:opacity .2s;max-width:210px;line-height:1.5}
+.hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:rgba(30,60,114,.8);color:white;padding:6px 18px;border-radius:20px;
+  font-size:12px;pointer-events:none}
+</style></head><body>
+<div id="tip" class="tip"></div>
+<svg id="svg"></svg>
+<div class="hint">🖱️ Click module to expand/collapse · Scroll to zoom · Drag to pan</div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const W=960,H=730,CX=W/2,CY=H/2,MR=215,TR=390;
 
-    MODULE_COLORS = ["#e74c3c","#3498db","#2ecc71","#e67e22","#9b59b6","#1abc9c","#f39c12","#8e44ad"]
-    MODULE_TOPICS = [
-        ["Supervised", "Unsupervised", "Reinforcement", "Bias-Variance", "ML Pipeline"],
-        ["NumPy", "Pandas", "Matplotlib", "Seaborn", "DataFrames"],
-        ["EDA", "Missing Values", "Scaling", "Encoding", "Outliers"],
-        ["Linear Reg", "Ridge/Lasso", "RMSE / R²", "Polynomial", "MAE"],
-        ["Logistic Reg", "Random Forest", "SVM", "XGBoost", "F1 / ROC"],
-        ["K-Means", "PCA", "DBSCAN", "t-SNE", "Silhouette"],
-        ["K-Fold CV", "Grid Search", "Dropout", "Early Stopping", "Ensembles"],
-        ["Neural Nets", "CNN / RNN", "ReLU / Softmax", "LSTM", "Transfer Learning"],
-    ]
-    MODULE_SHORT = ["Intro to ML","Python","Preprocessing","Regression","Classification","Unsupervised","Evaluation","Deep Learning"]
-    MODULE_ICONS = ["🤖","🐍","🔧","📈","🏷️","🔍","⚙️","🧠"]
+const MODS=[
+  {id:1,name:"Intro to ML",      icon:"🤖",color:"#e74c3c",
+   topics:["Supervised Learning","Unsupervised Learning","Reinforcement Learning",
+            "Bias-Variance Tradeoff","ML Pipeline","Feature Engineering","Overfitting / Underfitting"]},
+  {id:2,name:"Python for DS",    icon:"🐍",color:"#3498db",
+   topics:["NumPy Arrays","Pandas DataFrames","Matplotlib Charts","Seaborn Plots",
+            "List Comprehensions","GroupBy & Merge","Data Wrangling"]},
+  {id:3,name:"Preprocessing",    icon:"🔧",color:"#27ae60",
+   topics:["EDA","Missing Value Imputation","Min-Max Scaling","Z-Score Standardization",
+            "One-Hot Encoding","Label Encoding","SMOTE / Imbalance"]},
+  {id:4,name:"Regression",       icon:"📈",color:"#e67e22",
+   topics:["Linear Regression","Polynomial Regression","Ridge (L2)","Lasso (L1)",
+            "Elastic Net","RMSE / MAE / R²","Feature Importance"]},
+  {id:5,name:"Classification",   icon:"🏷️",color:"#9b59b6",
+   topics:["Logistic Regression","Decision Tree","Random Forest","SVM",
+            "KNN","XGBoost","Confusion Matrix / F1 / ROC"]},
+  {id:6,name:"Unsupervised",     icon:"🔍",color:"#16a085",
+   topics:["K-Means Clustering","DBSCAN","Hierarchical Clustering",
+            "PCA","t-SNE","Association Rules","Silhouette Score"]},
+  {id:7,name:"Evaluation",       icon:"⚙️",color:"#d35400",
+   topics:["K-Fold Cross-Validation","Grid Search CV","Random Search CV",
+            "Early Stopping","Dropout","Learning Curves","Ensemble Methods"]},
+  {id:8,name:"Deep Learning",    icon:"🧠",color:"#8e44ad",
+   topics:["Neural Networks","CNN","RNN / LSTM","Backpropagation",
+            "ReLU / Softmax","Batch Normalization","Transfer Learning"]},
+];
 
-    fig, ax = plt.subplots(figsize=(20, 20))
-    ax.set_xlim(-7, 7); ax.set_ylim(-7, 7); ax.axis("off")
-    fig.patch.set_facecolor("#f8f9ff"); ax.set_facecolor("#f8f9ff")
+const expanded={};
 
-    # Central node
-    center_circle = plt.Circle((0, 0), 1.15, color="#1e3c72", zorder=5)
-    ax.add_patch(center_circle)
-    ax.text(0, 0.2, "Machine", ha="center", va="center", fontsize=13, fontweight="bold", color="white", zorder=6)
-    ax.text(0, -0.2, "Learning", ha="center", va="center", fontsize=13, fontweight="bold", color="white", zorder=6)
+const svg=d3.select("#svg").attr("viewBox",`0 0 ${W} ${H}`);
+const root=svg.append("g").attr("id","root");
+svg.call(d3.zoom().scaleExtent([.35,3]).on("zoom",e=>root.attr("transform",e.transform)));
 
-    n = 8
-    module_r = 3.2
-    topic_r = 5.4
+const tip=document.getElementById("tip");
+svg.on("mousemove",e=>{tip.style.left=(e.pageX+14)+"px";tip.style.top=(e.pageY-10)+"px"});
 
-    for i in range(n):
-        angle = (np.pi / 2) - (2 * np.pi * i / n)
-        mx = module_r * np.cos(angle)
-        my = module_r * np.sin(angle)
-        color = MODULE_COLORS[i]
+// Background gradient
+const defs=svg.append("defs");
+const rg=defs.append("radialGradient").attr("id","bg");
+rg.append("stop").attr("offset","0%").attr("stop-color","#e8efff");
+rg.append("stop").attr("offset","100%").attr("stop-color","#dce8ff");
+svg.insert("rect","g").attr("width",W).attr("height",H).attr("fill","url(#bg)");
 
-        # Line from center to module
-        ax.plot([0, mx * 0.88], [0, my * 0.88], color=color, linewidth=2.5, alpha=0.7, zorder=2)
+// Center node
+const cg=root.append("g");
+// Glow
+cg.append("circle").attr("cx",CX).attr("cy",CY).attr("r",62)
+  .attr("fill","#1e3c72").attr("opacity",.18);
+cg.append("circle").attr("cx",CX).attr("cy",CY).attr("r",52)
+  .attr("fill","#1e3c72").attr("stroke","white").attr("stroke-width",3)
+  .style("filter","drop-shadow(0 4px 14px rgba(30,60,114,.5))");
+cg.append("text").attr("x",CX).attr("y",CY-10).attr("text-anchor","middle")
+  .attr("fill","white").attr("font-size",15).attr("font-weight","bold")
+  .attr("dominant-baseline","central").text("Machine");
+cg.append("text").attr("x",CX).attr("y",CY+10).attr("text-anchor","middle")
+  .attr("fill","white").attr("font-size",15).attr("font-weight","bold")
+  .attr("dominant-baseline","central").text("Learning");
 
-        # Module circle
-        mod_circle = plt.Circle((mx, my), 0.72, color=color, zorder=4)
-        ax.add_patch(mod_circle)
-        ax.text(mx, my + 0.12, MODULE_ICONS[i], ha="center", va="center", fontsize=14, zorder=5)
-        ax.text(mx, my - 0.22, MODULE_SHORT[i], ha="center", va="center",
-                fontsize=7.5, fontweight="bold", color="white", zorder=5)
+// Spokes (center→module lines) – drawn first so they sit below nodes
+const spokeLayer=root.insert("g","g").attr("id","spokes");
+const nodeLayer=root.append("g").attr("id","nodes");
 
-        # Topics
-        topics = MODULE_TOPICS[i]
-        spread = np.linspace(-0.55, 0.55, len(topics))
-        for j, topic in enumerate(topics):
-            # Perpendicular offset
-            perp_angle = angle + np.pi / 2
-            tx = topic_r * np.cos(angle) + spread[j] * np.cos(perp_angle) * 1.1
-            ty = topic_r * np.sin(angle) + spread[j] * np.sin(perp_angle) * 1.1
+MODS.forEach((m,i)=>{
+  const ang=(Math.PI*2*i/8)-Math.PI/2;
+  m.ax=ang; m.mx=CX+MR*Math.cos(ang); m.my=CY+MR*Math.sin(ang);
 
-            # Line from module to topic
-            ax.plot([mx, tx], [my, ty], color=color, linewidth=1.2, alpha=0.5, zorder=2)
+  // Spoke
+  spokeLayer.append("line").attr("class","link").attr("id",`spoke${m.id}`)
+    .attr("x1",CX).attr("y1",CY).attr("x2",m.mx).attr("y2",m.my)
+    .attr("stroke",m.color);
 
-            # Topic box
-            ax.add_patch(plt.Rectangle((tx - 0.62, ty - 0.22), 1.24, 0.44,
-                facecolor=color, alpha=0.18, edgecolor=color, linewidth=1.2,
-                zorder=3, joinstyle="round"))
-            ax.text(tx, ty, topic, ha="center", va="center", fontsize=7,
-                    fontweight="bold", color=color, zorder=4)
+  // Module node group
+  const g=nodeLayer.append("g").attr("class",`mod${m.id}`).attr("cursor","pointer")
+    .on("click",()=>toggle(m))
+    .on("mouseover",e=>{
+      tip.style.opacity=1;
+      tip.innerHTML=`<b style="color:${m.color}">${m.icon} Module ${m.id}</b><br>
+        <span style="color:#333">${m.name}</span><br>
+        <small style="color:#666">${expanded[m.id]?'Click to collapse':'Click to expand'} ${m.topics.length} topics</small>`;
+    })
+    .on("mouseout",()=>tip.style.opacity=0);
 
-    # Legend
-    for i, (mod, color, icon) in enumerate(zip(MODULE_SHORT, MODULE_COLORS, MODULE_ICONS)):
-        row = i % 4
-        col = i // 4
-        lx = -6.5 + col * 7
-        ly = 6.8 - row * 0.52
-        ax.add_patch(plt.Circle((lx, ly), 0.15, color=color, zorder=5))
-        ax.text(lx + 0.3, ly, f"{icon} Module {i+1}: {mod}", va="center",
-                fontsize=8.5, color="#333333", zorder=5)
+  // Glow ring
+  g.append("circle").attr("cx",m.mx).attr("cy",m.my).attr("r",44)
+    .attr("fill",m.color).attr("opacity",.18);
+  // Main circle
+  g.append("circle").attr("class","mod-circle").attr("cx",m.mx).attr("cy",m.my)
+    .attr("r",36).attr("fill",m.color);
+  // Icon
+  g.append("text").attr("x",m.mx).attr("y",m.my-9).attr("class","mod-label")
+    .attr("font-size",18).text(m.icon);
+  // Name (may wrap)
+  const words=m.name.split(" ");
+  if(words.length===1){
+    g.append("text").attr("x",m.mx).attr("y",m.my+10).attr("class","mod-label")
+      .attr("font-size",9).text(m.name);
+  } else {
+    g.append("text").attr("x",m.mx).attr("y",m.my+8).attr("class","mod-label")
+      .attr("font-size",9).text(words.slice(0,2).join(" "));
+    if(words.length>2)
+      g.append("text").attr("x",m.mx).attr("y",m.my+18).attr("class","mod-label")
+        .attr("font-size",9).text(words.slice(2).join(" "));
+  }
+  // Module number badge
+  g.append("circle").attr("cx",m.mx+28).attr("cy",m.my-28).attr("r",10)
+    .attr("fill","white").attr("stroke",m.color).attr("stroke-width",2);
+  g.append("text").attr("x",m.mx+28).attr("y",m.my-28).attr("text-anchor","middle")
+    .attr("dominant-baseline","central").attr("fill",m.color)
+    .attr("font-size",10).attr("font-weight","bold").text(m.id);
+});
 
-    ax.set_title("Machine Learning Course — Complete Mind Map", fontsize=18,
-                 fontweight="bold", color="#1e3c72", pad=20)
+function toggle(m){
+  expanded[m.id]=!expanded[m.id];
+  expanded[m.id]?showTopics(m):hideTopics(m);
+  // Rotate badge / visual feedback
+  d3.select(`.mod${m.id} circle.mod-circle`)
+    .transition().duration(150).attr("r",expanded[m.id]?40:36)
+    .transition().duration(150).attr("r",expanded[m.id]?38:36);
+}
 
-    buf = BytesIO()
-    plt.tight_layout()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#f8f9ff")
-    plt.close()
-    buf.seek(0)
-    img_bytes = buf.read()
+function showTopics(m){
+  const n=m.topics.length;
+  const spread=0.72;
+  const tLayer=root.append("g").attr("id",`tg${m.id}`);
 
-    st.image(img_bytes, use_container_width=True)
-    st.download_button("📥 Download Mind Map (PNG)", img_bytes, "ML_Course_MindMap.png", "image/png")
+  m.topics.forEach((topic,j)=>{
+    const frac=(n===1)?0:(j/(n-1)-.5);
+    const tang=m.ax+frac*spread;
+    const tx=CX+TR*Math.cos(tang);
+    const ty=CY+TR*Math.sin(tang);
+
+    const bw=Math.max(topic.length*7.2+16,110),bh=30;
+
+    tLayer.append("line").attr("class","topic-link")
+      .attr("x1",m.mx).attr("y1",m.my).attr("x2",tx).attr("y2",ty)
+      .attr("stroke",m.color).attr("stroke-opacity",0)
+      .transition().duration(350).attr("stroke-opacity",.45);
+
+    const tg=tLayer.append("g").attr("opacity",0)
+      .on("mouseover",e=>{
+        tip.style.opacity=1;
+        tip.innerHTML=`<b style="color:${m.color}">${topic}</b><br>
+          <small style="color:#666">Module ${m.id}: ${m.name}</small>`;
+      })
+      .on("mouseout",()=>tip.style.opacity=0);
+
+    // Subtle shadow
+    tg.append("rect").attr("x",tx-bw/2+2).attr("y",ty-bh/2+2)
+      .attr("width",bw).attr("height",bh).attr("rx",15).attr("ry",15)
+      .attr("fill","rgba(0,0,0,.1)");
+    tg.append("rect").attr("class","topic-rect")
+      .attr("x",tx-bw/2).attr("y",ty-bh/2)
+      .attr("width",bw).attr("height",bh).attr("rx",15).attr("ry",15)
+      .attr("fill","white").attr("stroke",m.color).attr("stroke-width",2);
+    tg.append("text").attr("class","topic-text")
+      .attr("x",tx).attr("y",ty).attr("fill",m.color).text(topic);
+
+    tg.transition().duration(380).delay(j*45).attr("opacity",1);
+  });
+}
+
+function hideTopics(m){
+  d3.select(`#tg${m.id}`)
+    .transition().duration(280).attr("opacity",0).remove();
+}
+
+// Title
+svg.append("text").attr("x",W/2).attr("y",28).attr("text-anchor","middle")
+  .attr("fill","#1e3c72").attr("font-size",17).attr("font-weight","bold")
+  .text("ML Training Portal — Interactive Mind Map");
+</script></body></html>"""
+
+    components.html(html, height=750, scrolling=False)
 
 
 # ── ROUTING ───────────────────────────────────────────────────────────────────
