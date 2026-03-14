@@ -29,7 +29,6 @@ QUESTIONS_PER_QUIZ = 25
 PASS_MARK = 13
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
-@st.cache_resource
 def get_openai_client():
     return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -810,13 +809,13 @@ def show_ai_tutor():
     if st.button("💬 Ask AI Tutor", type="primary"):
         if question.strip():
             try:
-                client = get_openai_client()
+                client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                 with st.spinner("Thinking..."):
                     resp = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role":"system","content":"You are an expert Machine Learning tutor. Explain clearly with examples. Use markdown headings and bullet points."},
-                            {"role":"user","content":question}
+                            {"role": "system", "content": "You are an expert Machine Learning tutor. Explain clearly with examples. Use markdown headings and bullet points."},
+                            {"role": "user", "content": str(question).strip()}
                         ]
                     )
                 st.markdown("### Answer")
