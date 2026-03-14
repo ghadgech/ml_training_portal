@@ -503,7 +503,8 @@ def generate_certificate(name, batch, quiz_type, score, total, date_str):
 # ── SESSION STATE INIT ────────────────────────────────────────────────────────
 for k, v in {"logged_in":False,"username":"","name":"","batch":"",
              "quiz_active":False,"quiz_type":"","quiz_questions":[],
-             "q_idx":0,"user_answers":{},"quiz_submitted":False,"quiz_score":0}.items():
+             "q_idx":0,"user_answers":{},"quiz_submitted":False,"quiz_score":0,
+             "slide_idx":0}.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
@@ -825,6 +826,535 @@ def show_ai_tutor():
         else:
             st.warning("Please enter a question.")
 
+# ── PAGE: PRESENTATION ────────────────────────────────────────────────────────
+SLIDES = [
+    {
+        "title": "Machine Learning Training Portal",
+        "subtitle": "A Complete 8-Module Certification Program",
+        "type": "cover",
+        "content": [
+            "📋 **8 comprehensive modules** from basics to deep learning",
+            "🎯 **Hands-on Python** with real-world datasets",
+            "📝 **Pre & Post Quizzes** to measure your progress",
+            "🏆 **Certificate of Completion** on passing",
+            "🤖 **AI Tutor** available for doubt resolution",
+        ],
+        "color": "#1e3c72",
+        "icon": "🤖",
+    },
+    {
+        "title": "Module 1 — Introduction to Machine Learning",
+        "subtitle": "What is ML and how does it work?",
+        "type": "module",
+        "color": "#e74c3c",
+        "icon": "🤖",
+        "sections": [
+            ("What is Machine Learning?", [
+                "Machine Learning is a branch of **Artificial Intelligence** that enables systems to **learn from data** and improve without being explicitly programmed.",
+                "Traditional programming: Rules + Data → Output",
+                "Machine Learning: Data + Output → Rules (the model learns the rules!)",
+            ]),
+            ("Types of Machine Learning", [
+                "**Supervised Learning** — Learns from labeled data (input-output pairs). Example: Predicting house prices, spam detection.",
+                "**Unsupervised Learning** — Finds hidden patterns in unlabeled data. Example: Customer segmentation, anomaly detection.",
+                "**Reinforcement Learning** — Learns by trial and error using rewards/penalties. Example: Game-playing AI, robotics.",
+            ]),
+            ("The ML Pipeline", [
+                "1️⃣ **Data Collection** — Gather raw data from various sources",
+                "2️⃣ **Data Preprocessing** — Clean, transform, and prepare data",
+                "3️⃣ **Model Building** — Select and train an algorithm",
+                "4️⃣ **Evaluation** — Measure model performance on test data",
+                "5️⃣ **Deployment** — Serve the model in production",
+            ]),
+            ("Key Concepts", [
+                "**Features (X)** — Input variables used for prediction (e.g., age, salary)",
+                "**Label/Target (y)** — Output variable to predict (e.g., price, category)",
+                "**Training Set** — Data used to train the model (typically 80%)",
+                "**Test Set** — Unseen data used to evaluate the model (typically 20%)",
+                "**Overfitting** — Model learns noise; performs well on train, poorly on test",
+                "**Underfitting** — Model is too simple; performs poorly on both",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 2 — Python for Data Science",
+        "subtitle": "Essential Python libraries for ML",
+        "type": "module",
+        "color": "#3498db",
+        "icon": "🐍",
+        "sections": [
+            ("Why Python for ML?", [
+                "Python is the **#1 language for Machine Learning** due to its simplicity, vast ecosystem, and community support.",
+                "Key advantages: Easy syntax, rich libraries, interactive notebooks (Jupyter), fast prototyping.",
+            ]),
+            ("NumPy — Numerical Computing", [
+                "Foundation for all ML in Python — provides fast N-dimensional array operations.",
+                "`import numpy as np`",
+                "`arr = np.array([1, 2, 3, 4, 5])`  → creates an array",
+                "`np.zeros((3,3))`  → 3×3 matrix of zeros",
+                "`np.dot(A, B)`  → matrix multiplication",
+                "`arr.mean()`, `arr.std()`  → statistical operations",
+            ]),
+            ("Pandas — Data Manipulation", [
+                "The go-to library for **data wrangling** — DataFrames are like spreadsheets in Python.",
+                "`import pandas as pd`",
+                "`df = pd.read_csv('data.csv')`  → load data",
+                "`df.head()` / `df.describe()` / `df.info()`  → explore data",
+                "`df['col'].fillna(0)`  → fill missing values",
+                "`df.groupby('city').mean()`  → aggregate data",
+                "`pd.merge(df1, df2, on='id')`  → join datasets",
+            ]),
+            ("Matplotlib & Seaborn — Visualization", [
+                "`plt.plot(x, y)` — Line chart",
+                "`plt.scatter(x, y)` — Scatter plot",
+                "`plt.hist(data)` — Histogram",
+                "`plt.bar(categories, values)` — Bar chart",
+                "`sns.heatmap(df.corr())` — Correlation heatmap",
+                "`sns.boxplot(x='col', data=df)` — Box plot for outliers",
+                "`sns.pairplot(df)` — Pairwise relationships",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 3 — Data Preprocessing & EDA",
+        "subtitle": "Cleaning and preparing data for ML",
+        "type": "module",
+        "color": "#2ecc71",
+        "icon": "🔧",
+        "sections": [
+            ("Exploratory Data Analysis (EDA)", [
+                "EDA is the **first step** before any ML — understand your data before modelling.",
+                "`df.shape` → dimensions (rows, columns)",
+                "`df.dtypes` → data types per column",
+                "`df.isnull().sum()` → count missing values",
+                "`df.describe()` → statistical summary",
+                "`df.value_counts()` → frequency of categories",
+                "Visualize distributions, correlations, and outliers",
+            ]),
+            ("Handling Missing Values", [
+                "**Drop rows**: `df.dropna()` — use when few rows affected",
+                "**Mean imputation**: `df['age'].fillna(df['age'].mean())` — for numeric columns",
+                "**Median imputation**: Better for skewed data",
+                "**Mode imputation**: `df['city'].fillna(df['city'].mode()[0])` — for categories",
+                "**Scikit-learn SimpleImputer**: handles bulk imputation in pipelines",
+            ]),
+            ("Feature Scaling", [
+                "Most ML algorithms are **sensitive to feature scale** (KNN, SVM, Neural Networks).",
+                "**Min-Max Scaling** → scales to [0, 1]: `MinMaxScaler()`",
+                "**Z-Score Standardization** → mean=0, std=1: `StandardScaler()`",
+                "**RobustScaler** → uses IQR, resistant to outliers",
+                "Always fit on **training data only**, then transform both train and test!",
+            ]),
+            ("Encoding Categorical Variables", [
+                "ML models require **numeric inputs** — categories must be encoded.",
+                "**Label Encoding**: Converts categories to integers (0, 1, 2...) — use for ordinal data",
+                "**One-Hot Encoding**: Creates binary columns per category — use for nominal data",
+                "`pd.get_dummies(df, columns=['city'])` — quick one-hot encoding",
+                "`from sklearn.preprocessing import LabelEncoder, OneHotEncoder`",
+                "**Warning**: Label encoding can imply false ordinal relationships!",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 4 — Supervised Learning: Regression",
+        "subtitle": "Predicting continuous numeric values",
+        "type": "module",
+        "color": "#e67e22",
+        "icon": "📈",
+        "sections": [
+            ("What is Regression?", [
+                "Regression predicts a **continuous numeric output** (e.g., price, temperature, salary).",
+                "The model learns a mathematical function: **y = f(X)**",
+                "Example problems: House price prediction, stock forecasting, demand estimation.",
+            ]),
+            ("Linear Regression", [
+                "Fits a **straight line** through data: y = β₀ + β₁x₁ + β₂x₂ + ...",
+                "`from sklearn.linear_model import LinearRegression`",
+                "`model = LinearRegression()`",
+                "`model.fit(X_train, y_train)` → train",
+                "`y_pred = model.predict(X_test)` → predict",
+                "**β₀** = intercept (y when all X = 0)",
+                "**β₁, β₂...** = coefficients (effect of each feature)",
+            ]),
+            ("Regularization: Ridge & Lasso", [
+                "**Ridge (L2)**: Adds penalty = λ × Σ(β²) → shrinks all coefficients, prevents overfitting",
+                "**Lasso (L1)**: Adds penalty = λ × Σ|β| → can set some coefficients to **zero** (built-in feature selection!)",
+                "**Elastic Net**: Combination of L1 + L2",
+                "Use `RidgeCV` or `LassoCV` to auto-select the best λ (alpha)",
+            ]),
+            ("Evaluation Metrics for Regression", [
+                "**MAE** (Mean Absolute Error) — average of |actual - predicted| — easy to interpret",
+                "**MSE** (Mean Squared Error) — average of (actual - predicted)² — penalises large errors",
+                "**RMSE** — √MSE — same units as target variable",
+                "**R²** (R-Squared) — % of variance explained by model (1.0 = perfect, 0 = no better than mean)",
+                "`from sklearn.metrics import mean_absolute_error, r2_score`",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 5 — Supervised Learning: Classification",
+        "subtitle": "Predicting categories and classes",
+        "type": "module",
+        "color": "#9b59b6",
+        "icon": "🏷️",
+        "sections": [
+            ("What is Classification?", [
+                "Classification predicts a **discrete category** (e.g., spam/not-spam, disease/no-disease).",
+                "**Binary classification**: 2 classes (0/1, Yes/No)",
+                "**Multi-class**: 3+ classes (dog/cat/bird)",
+                "Examples: Email spam, fraud detection, image recognition, medical diagnosis.",
+            ]),
+            ("Key Algorithms", [
+                "**Logistic Regression**: Uses sigmoid function to output probability between 0 and 1",
+                "**Decision Tree**: Splits data using feature thresholds (Gini impurity / Entropy)",
+                "**Random Forest**: Ensemble of 100s of decision trees — reduces variance via bagging",
+                "**SVM**: Finds optimal separating hyperplane with maximum margin",
+                "**KNN**: Classifies by majority vote of K nearest neighbours",
+                "**XGBoost**: Sequential boosting — each tree corrects previous errors",
+            ]),
+            ("Confusion Matrix & Metrics", [
+                "**Confusion Matrix**: TP | FP / FN | TN — the foundation of all classification metrics",
+                "**Accuracy** = (TP+TN)/Total — misleading for imbalanced data!",
+                "**Precision** = TP/(TP+FP) — of predicted positives, how many are truly positive?",
+                "**Recall** = TP/(TP+FN) — of all actual positives, how many did we catch?",
+                "**F1 Score** = 2×(Precision×Recall)/(Precision+Recall) — balance of precision and recall",
+                "**ROC-AUC** — area under ROC curve; 1.0 = perfect, 0.5 = random",
+            ]),
+            ("Handling Class Imbalance", [
+                "Real-world datasets are often **imbalanced** (e.g., 95% normal, 5% fraud).",
+                "Solutions: `class_weight='balanced'` in sklearn models",
+                "**Oversampling** minority class: SMOTE (Synthetic Minority Oversampling)",
+                "**Undersampling** majority class: RandomUnderSampler",
+                "Use **F1 / ROC-AUC** instead of accuracy for imbalanced problems",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 6 — Unsupervised Learning",
+        "subtitle": "Discovering hidden patterns in unlabeled data",
+        "type": "module",
+        "color": "#1abc9c",
+        "icon": "🔍",
+        "sections": [
+            ("What is Unsupervised Learning?", [
+                "No labels — the algorithm **discovers structure** in data on its own.",
+                "Main tasks: **Clustering** (grouping similar items) and **Dimensionality Reduction**",
+                "Applications: Customer segmentation, anomaly detection, recommendation systems, topic modelling.",
+            ]),
+            ("K-Means Clustering", [
+                "Partitions data into **K clusters** by minimising within-cluster variance.",
+                "Algorithm: 1) Initialise K centroids → 2) Assign points → 3) Update centroids → 4) Repeat until stable",
+                "`from sklearn.cluster import KMeans`",
+                "`kmeans = KMeans(n_clusters=3, random_state=42)`",
+                "`kmeans.fit(X)` → train | `kmeans.labels_` → cluster assignments",
+                "**Elbow Method**: Plot inertia vs K, pick the 'elbow' point",
+            ]),
+            ("Dimensionality Reduction with PCA", [
+                "PCA reduces many features to fewer **principal components** that capture most variance.",
+                "Useful for: Visualisation, removing multicollinearity, speeding up training",
+                "`from sklearn.decomposition import PCA`",
+                "`pca = PCA(n_components=2)` → reduce to 2D for visualisation",
+                "`X_reduced = pca.fit_transform(X)`",
+                "`pca.explained_variance_ratio_` → how much variance each component captures",
+            ]),
+            ("Other Techniques", [
+                "**DBSCAN**: Density-based — finds arbitrarily shaped clusters and marks noise points",
+                "**Hierarchical Clustering**: Builds a tree (dendrogram) — no need to specify K upfront",
+                "**t-SNE**: Nonlinear dimensionality reduction — excellent for visualising high-dimensional data in 2D/3D",
+                "**Association Rules** (Apriori): Finds frequent item patterns — used in market basket analysis",
+                "**Silhouette Score**: Measures cluster quality — ranges from -1 to 1 (higher = better)",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 7 — Model Evaluation & Hyperparameter Tuning",
+        "subtitle": "Optimising and validating ML models",
+        "type": "module",
+        "color": "#f39c12",
+        "icon": "⚙️",
+        "sections": [
+            ("Why Proper Evaluation Matters", [
+                "A model that scores 99% on training data might score 60% on new data — **overfitting**!",
+                "**Never evaluate on training data** — always use held-out test data.",
+                "Use **cross-validation** for a more reliable performance estimate.",
+            ]),
+            ("K-Fold Cross-Validation", [
+                "Split data into K equal folds. Train K times — each fold is the validation set once.",
+                "`from sklearn.model_selection import cross_val_score`",
+                "`scores = cross_val_score(model, X, y, cv=5)` → 5-fold CV",
+                "`scores.mean()` → average performance | `scores.std()` → stability",
+                "**Stratified K-Fold**: Preserves class distribution in each fold — use for classification",
+            ]),
+            ("Hyperparameter Tuning", [
+                "**Hyperparameters** = settings you configure BEFORE training (e.g., n_estimators, max_depth, learning_rate)",
+                "**Grid Search CV**: Tests all combinations — thorough but slow",
+                "`GridSearchCV(model, param_grid, cv=5)`",
+                "**Random Search CV**: Tests random combinations — faster for large search spaces",
+                "`RandomizedSearchCV(model, param_dist, n_iter=50, cv=5)`",
+                "**Bayesian Optimization** (Optuna): Learns from past trials — most efficient",
+            ]),
+            ("Regularization & Early Stopping", [
+                "**L2 Ridge**: Penalises large coefficients — keeps all features but shrinks them",
+                "**L1 Lasso**: Can zero out coefficients — automatic feature selection",
+                "**Dropout**: Randomly disables neurons during training — prevents co-adaptation",
+                "**Early Stopping**: Stop training when validation loss stops improving — saves compute",
+                "**Learning Curves**: Plot train vs validation score vs training size — diagnose bias/variance",
+            ]),
+        ],
+    },
+    {
+        "title": "Module 8 — Deep Learning & Neural Networks",
+        "subtitle": "Building intelligent systems with neural networks",
+        "type": "module",
+        "color": "#8e44ad",
+        "icon": "🧠",
+        "sections": [
+            ("Neural Network Fundamentals", [
+                "Inspired by the human brain — composed of **neurons** organised in **layers**.",
+                "**Input Layer**: receives raw features",
+                "**Hidden Layers**: learn complex representations",
+                "**Output Layer**: produces final prediction",
+                "Each neuron: output = activation(weights × inputs + bias)",
+                "**Backpropagation**: computes gradients of loss w.r.t. weights → used for gradient descent",
+            ]),
+            ("Activation Functions", [
+                "**ReLU** (Rectified Linear Unit): f(x) = max(0, x) — most popular for hidden layers",
+                "**Sigmoid**: f(x) = 1/(1+e⁻ˣ) → output between 0–1, used for binary output",
+                "**Softmax**: Outputs probability distribution across multiple classes",
+                "**Tanh**: Output between -1 and 1 — centred around 0",
+                "**Why activation functions?** Without them, a neural network is just a linear model!",
+            ]),
+            ("Convolutional Neural Networks (CNNs)", [
+                "Designed for **image and spatial data** — uses convolution operations.",
+                "**Conv Layer**: Applies filters to detect edges, textures, patterns",
+                "**Pooling Layer**: Reduces spatial dimensions (MaxPooling, AveragePooling)",
+                "**Fully Connected Layer**: Final classification/regression output",
+                "Applications: Image classification, object detection, face recognition",
+                "Popular architectures: VGG, ResNet, EfficientNet, MobileNet",
+            ]),
+            ("RNNs, LSTMs & Transfer Learning", [
+                "**RNN**: Designed for sequential data — has memory of previous inputs",
+                "**LSTM** (Long Short-Term Memory): Solves vanishing gradient problem in RNNs",
+                "Applications: Text generation, sentiment analysis, time series forecasting",
+                "**Transfer Learning**: Use a pre-trained model (trained on millions of images/text) and fine-tune on your task",
+                "Examples: BERT/GPT for NLP, ResNet/VGG for images",
+                "Saves huge amounts of training time and data requirements!",
+            ]),
+        ],
+    },
+    {
+        "title": "Course Summary",
+        "subtitle": "Your complete Machine Learning journey",
+        "type": "summary",
+        "color": "#1e3c72",
+        "icon": "🎓",
+        "content": [
+            ("Module 1", "🤖", "Introduction to ML", "Types of ML, Pipeline, Key Concepts"),
+            ("Module 2", "🐍", "Python for Data Science", "NumPy, Pandas, Matplotlib, Seaborn"),
+            ("Module 3", "🔧", "Data Preprocessing & EDA", "Cleaning, Scaling, Encoding, EDA"),
+            ("Module 4", "📈", "Regression", "Linear, Ridge, Lasso, RMSE, R²"),
+            ("Module 5", "🏷️", "Classification", "Logistic, RF, SVM, XGBoost, F1"),
+            ("Module 6", "🔍", "Unsupervised Learning", "K-Means, PCA, DBSCAN, t-SNE"),
+            ("Module 7", "⚙️", "Model Evaluation & Tuning", "Cross-validation, GridSearch, Regularization"),
+            ("Module 8", "🧠", "Deep Learning", "CNNs, LSTMs, Backprop, Transfer Learning"),
+        ],
+    },
+]
+
+def show_presentation():
+    st.markdown("## 🖥️ Course Presentation")
+    if "slide_idx" not in st.session_state:
+        st.session_state.slide_idx = 0
+
+    total_slides = len(SLIDES)
+    idx = st.session_state.slide_idx
+    slide = SLIDES[idx]
+
+    # Progress bar
+    st.progress((idx + 1) / total_slides)
+    st.caption(f"Slide {idx + 1} of {total_slides}")
+
+    # ── COVER SLIDE ──
+    if slide["type"] == "cover":
+        st.markdown(f"""
+<div style="background:linear-gradient(135deg,{slide['color']} 0%,#2a5298 100%);
+     padding:3rem 2rem;border-radius:16px;text-align:center;color:white;margin-bottom:1.5rem;">
+    <div style="font-size:4rem">{slide['icon']}</div>
+    <h1 style="font-size:2.4rem;margin:0.5rem 0">{slide['title']}</h1>
+    <h3 style="font-weight:normal;opacity:0.85">{slide['subtitle']}</h3>
+</div>""", unsafe_allow_html=True)
+        cols = st.columns(len(slide["content"]) if len(slide["content"]) <= 3 else 3)
+        for i, item in enumerate(slide["content"]):
+            with cols[i % 3]:
+                st.markdown(f"""<div style="background:#f0f4ff;padding:1rem;border-radius:10px;
+                border-left:4px solid #2a5298;margin:0.3rem 0;min-height:70px">{item}</div>""",
+                            unsafe_allow_html=True)
+
+    # ── MODULE SLIDE ──
+    elif slide["type"] == "module":
+        st.markdown(f"""
+<div style="background:linear-gradient(135deg,{slide['color']} 0%,{slide['color']}cc 100%);
+     padding:1.5rem 2rem;border-radius:12px;color:white;margin-bottom:1.5rem;">
+    <span style="font-size:2.5rem">{slide['icon']}</span>
+    <h2 style="margin:0.3rem 0">{slide['title']}</h2>
+    <p style="opacity:0.85;margin:0">{slide['subtitle']}</p>
+</div>""", unsafe_allow_html=True)
+
+        sections = slide["sections"]
+        if len(sections) <= 2:
+            for title, points in sections:
+                st.markdown(f"#### {title}")
+                for p in points:
+                    st.markdown(f"- {p}")
+        else:
+            col1, col2 = st.columns(2)
+            for i, (title, points) in enumerate(sections):
+                with (col1 if i % 2 == 0 else col2):
+                    st.markdown(f"""<div style="background:#fafafa;border:1px solid #e0e0e0;
+                    border-top:4px solid {slide['color']};border-radius:10px;
+                    padding:1rem 1.2rem;margin-bottom:1rem">
+                    <b style="color:{slide['color']}">{title}</b></div>""", unsafe_allow_html=True)
+                    for p in points:
+                        st.markdown(f"  - {p}")
+
+    # ── SUMMARY SLIDE ──
+    elif slide["type"] == "summary":
+        st.markdown(f"""
+<div style="background:linear-gradient(135deg,{slide['color']} 0%,#2a5298 100%);
+     padding:1.5rem 2rem;border-radius:12px;color:white;margin-bottom:1.5rem;">
+    <span style="font-size:2.5rem">{slide['icon']}</span>
+    <h2 style="margin:0.3rem 0">{slide['title']}</h2>
+    <p style="opacity:0.85;margin:0">{slide['subtitle']}</p>
+</div>""", unsafe_allow_html=True)
+        cols = st.columns(4)
+        for i, (mod, icon, name, desc) in enumerate(slide["content"]):
+            with cols[i % 4]:
+                st.markdown(f"""<div style="background:#f0f4ff;border-radius:10px;
+                padding:1rem;text-align:center;border-top:4px solid #2a5298;margin-bottom:0.8rem">
+                <div style="font-size:2rem">{icon}</div>
+                <b style="color:#1e3c72">{mod}</b><br>
+                <small style="color:#2a5298;font-weight:bold">{name}</small><br>
+                <small style="color:#666">{desc}</small></div>""", unsafe_allow_html=True)
+
+    # ── NAVIGATION ──
+    st.markdown("---")
+    nav1, nav2, nav3, nav4, nav5 = st.columns([1, 1, 3, 1, 1])
+    with nav1:
+        if st.button("⏮ First", use_container_width=True):
+            st.session_state.slide_idx = 0; st.rerun()
+    with nav2:
+        if idx > 0 and st.button("◀ Prev", use_container_width=True):
+            st.session_state.slide_idx -= 1; st.rerun()
+    with nav4:
+        if idx < total_slides - 1 and st.button("Next ▶", use_container_width=True, type="primary"):
+            st.session_state.slide_idx += 1; st.rerun()
+    with nav5:
+        if st.button("Last ⏭", use_container_width=True):
+            st.session_state.slide_idx = total_slides - 1; st.rerun()
+
+    # Slide selector
+    with nav3:
+        jump = st.selectbox("Go to slide:", [f"{i+1}. {SLIDES[i]['title']}" for i in range(total_slides)],
+                            index=idx, label_visibility="collapsed")
+        jump_idx = int(jump.split(".")[0]) - 1
+        if jump_idx != idx:
+            st.session_state.slide_idx = jump_idx; st.rerun()
+
+
+# ── PAGE: MIND MAP ────────────────────────────────────────────────────────────
+def show_mind_map():
+    st.markdown("## 🧩 ML Course Mind Map")
+    st.markdown("Visual overview of all 8 modules and their key concepts.")
+
+    import numpy as np
+
+    MODULE_COLORS = ["#e74c3c","#3498db","#2ecc71","#e67e22","#9b59b6","#1abc9c","#f39c12","#8e44ad"]
+    MODULE_TOPICS = [
+        ["Supervised", "Unsupervised", "Reinforcement", "Bias-Variance", "ML Pipeline"],
+        ["NumPy", "Pandas", "Matplotlib", "Seaborn", "DataFrames"],
+        ["EDA", "Missing Values", "Scaling", "Encoding", "Outliers"],
+        ["Linear Reg", "Ridge/Lasso", "RMSE / R²", "Polynomial", "MAE"],
+        ["Logistic Reg", "Random Forest", "SVM", "XGBoost", "F1 / ROC"],
+        ["K-Means", "PCA", "DBSCAN", "t-SNE", "Silhouette"],
+        ["K-Fold CV", "Grid Search", "Dropout", "Early Stopping", "Ensembles"],
+        ["Neural Nets", "CNN / RNN", "ReLU / Softmax", "LSTM", "Transfer Learning"],
+    ]
+    MODULE_SHORT = ["Intro to ML","Python","Preprocessing","Regression","Classification","Unsupervised","Evaluation","Deep Learning"]
+    MODULE_ICONS = ["🤖","🐍","🔧","📈","🏷️","🔍","⚙️","🧠"]
+
+    fig, ax = plt.subplots(figsize=(20, 20))
+    ax.set_xlim(-7, 7); ax.set_ylim(-7, 7); ax.axis("off")
+    fig.patch.set_facecolor("#f8f9ff"); ax.set_facecolor("#f8f9ff")
+
+    # Central node
+    center_circle = plt.Circle((0, 0), 1.15, color="#1e3c72", zorder=5)
+    ax.add_patch(center_circle)
+    ax.text(0, 0.2, "Machine", ha="center", va="center", fontsize=13, fontweight="bold", color="white", zorder=6)
+    ax.text(0, -0.2, "Learning", ha="center", va="center", fontsize=13, fontweight="bold", color="white", zorder=6)
+
+    n = 8
+    module_r = 3.2
+    topic_r = 5.4
+
+    for i in range(n):
+        angle = (np.pi / 2) - (2 * np.pi * i / n)
+        mx = module_r * np.cos(angle)
+        my = module_r * np.sin(angle)
+        color = MODULE_COLORS[i]
+
+        # Line from center to module
+        ax.plot([0, mx * 0.88], [0, my * 0.88], color=color, linewidth=2.5, alpha=0.7, zorder=2)
+
+        # Module circle
+        mod_circle = plt.Circle((mx, my), 0.72, color=color, zorder=4)
+        ax.add_patch(mod_circle)
+        ax.text(mx, my + 0.12, MODULE_ICONS[i], ha="center", va="center", fontsize=14, zorder=5)
+        ax.text(mx, my - 0.22, MODULE_SHORT[i], ha="center", va="center",
+                fontsize=7.5, fontweight="bold", color="white", zorder=5)
+
+        # Topics
+        topics = MODULE_TOPICS[i]
+        spread = np.linspace(-0.55, 0.55, len(topics))
+        for j, topic in enumerate(topics):
+            # Perpendicular offset
+            perp_angle = angle + np.pi / 2
+            tx = topic_r * np.cos(angle) + spread[j] * np.cos(perp_angle) * 1.1
+            ty = topic_r * np.sin(angle) + spread[j] * np.sin(perp_angle) * 1.1
+
+            # Line from module to topic
+            ax.plot([mx, tx], [my, ty], color=color, linewidth=1.2, alpha=0.5, zorder=2)
+
+            # Topic box
+            ax.add_patch(plt.Rectangle((tx - 0.62, ty - 0.22), 1.24, 0.44,
+                facecolor=color, alpha=0.18, edgecolor=color, linewidth=1.2,
+                zorder=3, joinstyle="round"))
+            ax.text(tx, ty, topic, ha="center", va="center", fontsize=7,
+                    fontweight="bold", color=color, zorder=4)
+
+    # Legend
+    for i, (mod, color, icon) in enumerate(zip(MODULE_SHORT, MODULE_COLORS, MODULE_ICONS)):
+        row = i % 4
+        col = i // 4
+        lx = -6.5 + col * 7
+        ly = 6.8 - row * 0.52
+        ax.add_patch(plt.Circle((lx, ly), 0.15, color=color, zorder=5))
+        ax.text(lx + 0.3, ly, f"{icon} Module {i+1}: {mod}", va="center",
+                fontsize=8.5, color="#333333", zorder=5)
+
+    ax.set_title("Machine Learning Course — Complete Mind Map", fontsize=18,
+                 fontweight="bold", color="#1e3c72", pad=20)
+
+    buf = BytesIO()
+    plt.tight_layout()
+    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#f8f9ff")
+    plt.close()
+    buf.seek(0)
+    img_bytes = buf.read()
+
+    st.image(img_bytes, use_container_width=True)
+    st.download_button("📥 Download Mind Map (PNG)", img_bytes, "ML_Course_MindMap.png", "image/png")
+
+
 # ── ROUTING ───────────────────────────────────────────────────────────────────
 if not st.session_state.logged_in:
     show_login()
@@ -833,7 +1363,8 @@ else:
         st.markdown(f"### 👤 {st.session_state.name}")
         st.caption(f"Batch: {st.session_state.batch}  |  ID: {st.session_state.username}")
         st.markdown("---")
-        menu = ["🏠 Home", "📚 Course Content", "📝 Pre Quiz", "✅ Post Quiz", "📊 My Results"]
+        menu = ["🏠 Home", "📚 Course Content", "🖥️ Presentation", "🧩 Mind Map",
+                "📝 Pre Quiz", "✅ Post Quiz", "📊 My Results"]
         if is_instructor(st.session_state.username):
             menu.append("🎓 Instructor Dashboard")
         menu.append("🤖 AI Tutor")
@@ -854,6 +1385,10 @@ else:
         show_quiz_page("Post Quiz")
     elif page == "📊 My Results":
         show_my_results()
+    elif page == "🖥️ Presentation":
+        show_presentation()
+    elif page == "🧩 Mind Map":
+        show_mind_map()
     elif page == "🎓 Instructor Dashboard":
         show_instructor_dashboard()
     elif page == "🤖 AI Tutor":
