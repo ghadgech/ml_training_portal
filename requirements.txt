@@ -3,7 +3,5 @@ pandas
 matplotlib
 openai
 openpyxl
-folium
-streamlit-folium
 requests
 geopy

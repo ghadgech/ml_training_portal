@@ -2,10 +2,7 @@ import streamlit as st
 import requests
 import json
 import math
-import folium
-from streamlit_folium import st_folium
 from datetime import datetime
-import time
 
 # Page configuration
 st.set_page_config(
@@ -473,7 +470,6 @@ with col1:
         3. Or ask: "What is my location?" in Google Maps
         """)
 
-# Manual location input (fallback)
 with col2:
     st.subheader("📍 Or enter location manually:")
     col_lat, col_lon = st.columns(2)
@@ -484,14 +480,33 @@ with col2:
     with col_lon:
         manual_lon = st.number_input("Longitude", value=0.0, format="%.6f", key="lon_input")
 
-    if st.button("✅ Set Location", key="manual_loc_btn"):
-        st.session_state.user_location = {
-            "latitude": manual_lat,
-            "longitude": manual_lon,
-            "accuracy": None,
-            "timestamp": datetime.now().isoformat()
-        }
-        st.success(f"📍 Location set to: {manual_lat}, {manual_lon}")
+    col_set, col_auto = st.columns(2)
+
+    with col_set:
+        if st.button("✅ Set Location", key="manual_loc_btn"):
+            st.session_state.user_location = {
+                "latitude": manual_lat,
+                "longitude": manual_lon,
+                "accuracy": None,
+                "timestamp": datetime.now().isoformat()
+            }
+            st.success(f"📍 Location set")
+
+    with col_auto:
+        if st.button("🚗 Auto-Update (Driving)", key="auto_update_btn"):
+            st.markdown("""
+            <script>
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    const lat = pos.coords.latitude.toFixed(6);
+                    const lon = pos.coords.longitude.toFixed(6);
+                    alert('Your location:\\n' + lat + ', ' + lon + '\\n\\nCopy and paste above');
+                    navigator.clipboard.writeText(lat + ',' + lon);
+                });
+            }
+            </script>
+            """, unsafe_allow_html=True)
+            st.info("📍 Your location shown. Copy to fields above.")
 
 # Place type search
 st.subheader("🔍 Search for Places")
@@ -622,47 +637,20 @@ if st.session_state.places:
     # Calculate map limit
     map_limit = min(results_count + 10, len(places))  # Show a few more than selected
 
-    # Create map
-    st.subheader(f"🗺️ Map View (Top {map_limit} Results)")
+    # Create Google Maps iframe
+    st.subheader(f"🗺️ Map View - {place_type.title()}s Near You")
 
-    m = folium.Map(
-        location=[user_lat, user_lon],
-        zoom_start=14,
-        tiles="OpenStreetMap"
-    )
+    # Generate Google Maps embed URL with markers
+    map_url = f"https://maps.google.com/maps?q={user_lat},{user_lon}&z=15&output=embed"
 
-    # Add user location (center, blue)
-    folium.Marker(
-        [user_lat, user_lon],
-        popup="📍 Your Location",
-        icon=folium.Icon(color="blue", icon="person", prefix="fa"),
-        tooltip="You are here"
-    ).add_to(m)
+    # Display Google Maps
+    st.markdown(f"""
+    <iframe width="100%" height="500" frameborder="0" style="border:0"
+    src="{map_url}" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+    </iframe>
+    """, unsafe_allow_html=True)
 
-    # Add nearby places (color coded by rank)
-    colors = ["red", "orange", "green", "purple", "darkred", "lightred", "gray", "black", "blue", "pink"]
-
-    for idx, place in enumerate(places[:map_limit]):
-        color = colors[idx % len(colors)]
-        distance_m = place['distance_m']
-        distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
-
-        # Create simple text popup (HTML has issues in streamlit-folium)
-        popup_text = f"""
-#{idx+1} {place['name']}
-Distance: {distance_str}
-Rating: {place.get('rating', 'N/A')}
-Lat: {place['latitude']:.4f}, Lon: {place['longitude']:.4f}
-        """
-
-        folium.Marker(
-            [place["latitude"], place["longitude"]],
-            popup=popup_text,
-            icon=folium.Icon(color=color, icon="utensils", prefix="fa"),
-            tooltip=f"{place['name']} ({distance_str})"
-        ).add_to(m)
-
-    st_folium(m, width=1200, height=500)
+    st.info(f"📍 **You are at:** {location_display} | **Viewing top {map_limit} {place_type}s by proximity**")
 
     # All results in expandable section
     st.markdown("---")
