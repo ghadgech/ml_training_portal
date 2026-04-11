@@ -57,51 +57,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     return R * c
 
-# ─── Continuous Geolocation Tracking ──────────────────────────────────
-def get_continuous_geolocation():
-    """JavaScript for continuous geolocation tracking while driving"""
-    geolocation_script = """
-    <script>
-    function startContinuousTracking() {
-        if (navigator.geolocation) {
-            // Watch position - continuous updates
-            navigator.geolocation.watchPosition(
-                function(position) {
-                    // Update location every time position changes
-                    const locationData = {
-                        "latitude": position.coords.latitude,
-                        "longitude": position.coords.longitude,
-                        "accuracy": position.coords.accuracy,
-                        "timestamp": new Date().toISOString()
-                    };
-
-                    // Store in window for Streamlit to access
-                    window.userLocation = locationData;
-
-                    // Also store in localStorage to persist across refreshes
-                    localStorage.setItem('user_location', JSON.stringify(locationData));
-
-                    console.log('Location updated:', locationData);
-                },
-                function(error) {
-                    console.error('Geolocation error:', error.message);
-                },
-                {
-                    enableHighAccuracy: true,  // GPS accuracy
-                    timeout: 5000,
-                    maximumAge: 0  // Always get fresh location
-                }
-            );
-        }
-    }
-
-    // Start tracking when page loads
-    window.addEventListener('load', startContinuousTracking);
-    startContinuousTracking();
-    </script>
-    """
-    return geolocation_script
-
 # ─── Demo Data for Testing ────────────────────────────────────────────
 def get_demo_places(lat, lon, place_type):
     """Return category-specific demo data for testing the app"""
@@ -594,7 +549,7 @@ if st.button("🔎 Find Nearby Places", key="search_btn"):
                 if data:
                     st.session_state.places = parse_overpass_places(data, lat, lon)
     else:
-        st.warning("⚠️ Please enable live tracking or enter your location manually")
+        st.warning("⚠️ Please enter your location first (Latitude & Longitude)")
 
 # Display results
 if st.session_state.places:
