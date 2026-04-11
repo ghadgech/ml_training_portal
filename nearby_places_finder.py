@@ -626,6 +626,9 @@ if st.session_state.places:
 
     st.markdown("---")
 
+    # Calculate map limit
+    map_limit = min(results_count + 10, len(places))  # Show a few more than selected
+
     # Create map
     st.subheader(f"🗺️ Map View (Top {map_limit} Results)")
 
@@ -645,7 +648,6 @@ if st.session_state.places:
 
     # Add nearby places (color coded by rank)
     colors = ["red", "orange", "green", "purple", "darkred", "lightred", "gray", "black", "blue", "pink"]
-    map_limit = min(results_count + 10, len(places))  # Show a few more than selected
 
     for idx, place in enumerate(places[:map_limit]):
         color = colors[idx % len(colors)]
