@@ -331,6 +331,46 @@ def parse_overpass_places(data, user_lat, user_lon):
 # ─── Main App ──────────────────────────────────────────────────────────
 st.markdown('<div class="main-header"><h1>📍 Nearby Places Finder</h1><p>Find places near you sorted by proximity</p></div>', unsafe_allow_html=True)
 
+# ─── Sidebar - Configuration ────────────────────────────────────────────
+with st.sidebar:
+    st.header("⚙️ Configuration")
+
+    st.markdown("### 📍 Data Source")
+    st.info("""
+    **Current:** Demo data (sample places)
+
+    To use **real places from Google Maps**, you need a Google Places API key.
+    """)
+
+    google_api_key = st.text_input(
+        "Google Places API Key (optional)",
+        type="password",
+        help="Get a free key from https://cloud.google.com/docs/authentication/api-keys"
+    )
+
+    if google_api_key:
+        st.success("✅ Google Places API key configured")
+    else:
+        st.markdown("""
+        **How to get a free Google Places API key:**
+        1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+        2. Create a new project
+        3. Enable "Places API"
+        4. Create an API key
+        5. Paste it above
+
+        **Cost:** Free tier includes $200/month credit
+        """)
+
+    st.markdown("---")
+    st.markdown("### 📌 About This App")
+    st.markdown("""
+    - Finds nearby places sorted by **distance only**
+    - No algorithm bias or sponsored results
+    - Works when driving or stationary
+    - Updates as you move
+    """)
+
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -418,6 +458,11 @@ if st.session_state.places:
     place_name = get_place_name(user_lat, user_lon)
     location_display = place_name if place_name else f"{user_lat:.4f}, {user_lon:.4f}"
 
+    # Check if using demo data
+    is_demo = False
+    if len(places) > 0 and "Demo" in places[0].get('_source', ''):
+        is_demo = True
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("📍 Your Location", location_display)
@@ -427,6 +472,12 @@ if st.session_state.places:
         st.metric("📌 Total Found", len(places))
     with col4:
         st.metric("⏮️ Closest", f"{places[0]['distance_m']:.0f}m" if places[0]['distance_m'] < 1000 else f"{places[0]['distance_km']:.2f}km")
+
+    # Show data source indicator
+    if is_demo:
+        st.warning("⚠️ **DEMO DATA MODE** - Using sample places for demonstration. To see real places, add your Google Places API key in the sidebar.")
+    else:
+        st.success("✅ Using real OpenStreetMap data")
 
     st.markdown("---")
 
