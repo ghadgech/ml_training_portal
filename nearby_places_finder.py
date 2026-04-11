@@ -642,23 +642,29 @@ if st.session_state.places:
 
     st.markdown("---")
 
-    # Calculate map limit
-    map_limit = min(results_count + 10, len(places))  # Show a few more than selected
+    # Open in Google Maps button
+    map_search_url = f"https://www.google.com/maps/search/{place_type}/@{user_lat},{user_lon},15z"
 
-    # Create Google Maps iframe
-    st.subheader(f"🗺️ Map View - {place_type.title()}s Near You")
+    col_map, col_info = st.columns([3, 2])
 
-    # Generate Google Maps embed URL with markers
-    map_url = f"https://maps.google.com/maps?q={user_lat},{user_lon}&z=15&output=embed"
+    with col_map:
+        st.markdown(f"""
+        <a href="{map_search_url}" target="_blank" style="
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+        ">
+        🗺️ Open Full Map in Google Maps →
+        </a>
+        """, unsafe_allow_html=True)
 
-    # Display Google Maps
-    st.markdown(f"""
-    <iframe width="100%" height="500" frameborder="0" style="border:0"
-    src="{map_url}" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
-    </iframe>
-    """, unsafe_allow_html=True)
-
-    st.info(f"📍 **You are at:** {location_display} | **Viewing top {map_limit} {place_type}s by proximity**")
+    with col_info:
+        st.info(f"📍 {location_display} | {len(places)} {place_type}s found")
 
     # All results in expandable section
     st.markdown("---")
