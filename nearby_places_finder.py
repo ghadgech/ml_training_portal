@@ -88,9 +88,36 @@ def get_geolocation():
     """
     return geolocation_script
 
+# ─── Demo Data for Testing ────────────────────────────────────────────
+def get_demo_places(lat, lon, place_type):
+    """Return demo data for testing the app"""
+    demo_data = {
+        "dentist": [
+            {"name": "Smile Dental Clinic", "lat": lat + 0.002, "lon": lon + 0.002},
+            {"name": "Perfect Teeth Center", "lat": lat - 0.001, "lon": lon + 0.003},
+            {"name": "Bright Smile Dentistry", "lat": lat + 0.004, "lon": lon - 0.002},
+            {"name": "Dr. Smith Dental", "lat": lat - 0.003, "lon": lon - 0.001},
+            {"name": "Modern Dental Clinic", "lat": lat + 0.005, "lon": lon + 0.004},
+        ],
+        "restaurant": [
+            {"name": "Burger Palace", "lat": lat + 0.001, "lon": lon + 0.001},
+            {"name": "Italian Bistro", "lat": lat - 0.002, "lon": lon + 0.002},
+            {"name": "Asian Fusion", "lat": lat + 0.003, "lon": lon - 0.001},
+            {"name": "Pizza House", "lat": lat - 0.001, "lon": lon - 0.003},
+            {"name": "Sushi Bar", "lat": lat + 0.004, "lon": lon + 0.002},
+        ],
+        "hospital": [
+            {"name": "City General Hospital", "lat": lat + 0.005, "lon": lon + 0.003},
+            {"name": "St. Mary's Medical Center", "lat": lat - 0.004, "lon": lon + 0.001},
+            {"name": "Emergency Care Hospital", "lat": lat + 0.002, "lon": lon - 0.004},
+        ],
+    }
+
+    return demo_data.get(place_type.lower(), demo_data["restaurant"])
+
 # ─── Fetch Places from Overpass API ────────────────────────────────────
 def fetch_nearby_places(lat, lon, place_type, radius=2000):
-    """Fetch nearby places using Overpass API with multiple retries"""
+    """Fetch nearby places using Overpass API with demo fallback"""
 
     overpass_url = "https://overpass-api.de/api/interpreter"
 
@@ -142,32 +169,44 @@ def fetch_nearby_places(lat, lon, place_type, radius=2000):
                 headers=headers
             )
 
-            # Check if response has content
-            if response.text.strip() == "":
-                st.error("❌ API returned empty response. Please try again.")
-                return None
-
-            if response.status_code == 200:
+            if response.status_code == 200 and response.text.strip():
                 try:
                     data = response.json()
-                    if data and "elements" in data:
+                    if data and "elements" in data and len(data["elements"]) > 0:
+                        st.success("✅ Found places from OpenStreetMap")
                         return data
-                    else:
-                        st.info("ℹ️ No places found in this area. Try increasing the search radius.")
-                        return {"elements": []}
-                except json.JSONDecodeError as e:
-                    st.error("❌ API error - please try again in 30 seconds")
-                    return None
-            else:
-                st.error(f"❌ API Error {response.status_code}")
-                return None
+                except json.JSONDecodeError:
+                    pass
 
-    except requests.Timeout:
-        st.error("❌ Request timed out. OpenStreetMap is busy - try again in a moment.")
-        return None
+        # Fallback to demo data
+        st.warning("⚠️ Using demo data (OpenStreetMap API unavailable). To use real data, add your Google Places API key.")
+        demo_places = get_demo_places(lat, lon, place_type)
+        return {
+            "elements": [
+                {
+                    "type": "node",
+                    "lat": p["lat"],
+                    "lon": p["lon"],
+                    "tags": {"name": p["name"]}
+                }
+                for p in demo_places
+            ]
+        }
+
     except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-        return None
+        st.warning(f"⚠️ Using demo data. Error: {str(e)[:50]}")
+        demo_places = get_demo_places(lat, lon, place_type)
+        return {
+            "elements": [
+                {
+                    "type": "node",
+                    "lat": p["lat"],
+                    "lon": p["lon"],
+                    "tags": {"name": p["name"]}
+                }
+                for p in demo_places
+            ]
+        }
 
 # ─── Parse Overpass Response ───────────────────────────────────────────
 def parse_overpass_places(data, user_lat, user_lon):
