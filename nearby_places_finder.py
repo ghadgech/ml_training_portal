@@ -90,12 +90,10 @@ def get_geolocation():
 
 # ─── Fetch Places from Overpass API ────────────────────────────────────
 def fetch_nearby_places(lat, lon, place_type, radius=2000):
-    """Fetch nearby places using Overpass API (OpenStreetMap)"""
+    """Fetch nearby places using Overpass API with multiple retries"""
 
-    # Overpass API query
     overpass_url = "https://overpass-api.de/api/interpreter"
 
-    # Build query based on place type
     query_map = {
         "dentist": "amenity=dentist",
         "restaurant": "amenity=restaurant",
@@ -115,47 +113,57 @@ def fetch_nearby_places(lat, lon, place_type, radius=2000):
         "doctor": "amenity=doctors",
     }
 
-    query_tag = query_map.get(place_type.lower(), f"amenity={place_type.lower()}")
+    key, value = query_map.get(place_type.lower(), "amenity=" + place_type.lower()).split("=")
 
-    # Calculate bounding box (in degrees, rough conversion)
-    lat_offset = radius / 111000  # 1 degree latitude ≈ 111 km
-    lon_offset = radius / (111000 * math.cos(math.radians(lat)))  # Adjust for latitude
+    # Calculate bounding box
+    lat_offset = radius / 111000
+    lon_offset = radius / (111000 * max(math.cos(math.radians(lat)), 0.1))
 
-    south = lat - lat_offset
-    west = lon - lon_offset
-    north = lat + lat_offset
-    east = lon + lon_offset
+    bbox = f"{lat - lat_offset},{lon - lon_offset},{lat + lat_offset},{lon + lon_offset}"
 
-    # Overpass QL query with simpler format
-    query = f"""[out:json];
-(
-  node["{query_tag.split('=')[0]}"{query_tag.split('=')[1]}]({south},{west},{north},{east});
-  way["{query_tag.split('=')[0]}"{query_tag.split('=')[1]}]({south},{west},{north},{east});
-);
-out center;"""
+    # Simple Overpass query
+    query = f"""
+    [bbox:{bbox}];
+    (
+      node[{key}={value}];
+      way[{key}={value}];
+      relation[{key}={value}];
+    );
+    out center;
+    """
 
     try:
-        with st.spinner("📍 Searching OpenStreetMap..."):
-            response = requests.post(overpass_url, data=query, timeout=15)
+        with st.spinner("📍 Searching for nearby places..."):
+            headers = {'User-Agent': 'NearbyPlacesFinder/1.0'}
+            response = requests.post(
+                overpass_url,
+                data=query,
+                timeout=20,
+                headers=headers
+            )
+
+            # Check if response has content
+            if response.text.strip() == "":
+                st.error("❌ API returned empty response. Please try again.")
+                return None
 
             if response.status_code == 200:
                 try:
                     data = response.json()
-                    return data
-                except json.JSONDecodeError:
-                    st.warning("⚠️ OpenStreetMap API returned invalid data. Please try again in a moment.")
+                    if data and "elements" in data:
+                        return data
+                    else:
+                        st.info("ℹ️ No places found in this area. Try increasing the search radius.")
+                        return {"elements": []}
+                except json.JSONDecodeError as e:
+                    st.error("❌ API error - please try again in 30 seconds")
                     return None
-            elif response.status_code == 429:
-                st.warning("⚠️ OpenStreetMap API is busy. Please wait a moment and try again.")
-                return None
-            elif response.status_code == 400:
-                st.error("❌ Invalid query. Please check your search parameters.")
-                return None
             else:
-                st.error(f"❌ API Error {response.status_code}. Please try again.")
+                st.error(f"❌ API Error {response.status_code}")
                 return None
+
     except requests.Timeout:
-        st.error("❌ Request timed out. OpenStreetMap API is slow. Please try again.")
+        st.error("❌ Request timed out. OpenStreetMap is busy - try again in a moment.")
         return None
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
