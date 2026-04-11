@@ -485,11 +485,22 @@ if st.session_state.places:
         distance_m = place['distance_m']
         distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
 
+        # Create popup with HTML for better formatting
+        popup_text = f"""
+        <div style="font-family: Arial; width: 200px;">
+            <h4 style="margin: 5px 0;">#{idx+1} {place['name']}</h4>
+            <p style="margin: 5px 0;"><strong>Distance:</strong> {distance_str}</p>
+            <p style="margin: 5px 0; font-size: 12px; color: #666;">
+                Coordinates: {place['latitude']:.6f}, {place['longitude']:.6f}
+            </p>
+        </div>
+        """
+
         folium.Marker(
             [place["latitude"], place["longitude"]],
-            popup=f"<b>#{idx+1} {place['name']}</b><br>Distance: {distance_str}",
+            popup=folium.Popup(popup_text, max_width=250),
             icon=folium.Icon(color=color, icon="map-pin", prefix="fa"),
-            tooltip=f"#{idx+1}: {place['name']} ({distance_str})"
+            tooltip=folium.Tooltip(f"{place['name']} - {distance_str}", sticky=False)
         ).add_to(m)
 
     st_folium(m, width=1200, height=500)
