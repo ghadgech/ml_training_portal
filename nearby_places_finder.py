@@ -5,6 +5,7 @@ import math
 import folium
 from streamlit_folium import st_folium
 from datetime import datetime
+import time
 
 # Page configuration
 st.set_page_config(
@@ -92,7 +93,6 @@ def fetch_nearby_places(lat, lon, place_type, radius=2000):
     """Fetch nearby places using Overpass API (OpenStreetMap)"""
 
     # Overpass API query
-    # Using Overpass API which is more powerful than Nominatim
     overpass_url = "https://overpass-api.de/api/interpreter"
 
     # Build query based on place type
@@ -117,25 +117,48 @@ def fetch_nearby_places(lat, lon, place_type, radius=2000):
 
     query_tag = query_map.get(place_type.lower(), f"amenity={place_type.lower()}")
 
-    # Overpass QL query
-    query = f"""
-    [bbox:{lat-radius/111000},{lon-radius/111000},{lat+radius/111000},{lon+radius/111000}];
-    (
-      node[{query_tag}];
-      way[{query_tag}];
-      relation[{query_tag}];
-    );
-    out geom;
-    """
+    # Calculate bounding box (in degrees, rough conversion)
+    lat_offset = radius / 111000  # 1 degree latitude ≈ 111 km
+    lon_offset = radius / (111000 * math.cos(math.radians(lat)))  # Adjust for latitude
+
+    south = lat - lat_offset
+    west = lon - lon_offset
+    north = lat + lat_offset
+    east = lon + lon_offset
+
+    # Overpass QL query with simpler format
+    query = f"""[out:json];
+(
+  node["{query_tag.split('=')[0]}"{query_tag.split('=')[1]}]({south},{west},{north},{east});
+  way["{query_tag.split('=')[0]}"{query_tag.split('=')[1]}]({south},{west},{north},{east});
+);
+out center;"""
 
     try:
-        response = requests.post(overpass_url, data=query, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return None
+        with st.spinner("📍 Searching OpenStreetMap..."):
+            response = requests.post(overpass_url, data=query, timeout=15)
+
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    return data
+                except json.JSONDecodeError:
+                    st.warning("⚠️ OpenStreetMap API returned invalid data. Please try again in a moment.")
+                    return None
+            elif response.status_code == 429:
+                st.warning("⚠️ OpenStreetMap API is busy. Please wait a moment and try again.")
+                return None
+            elif response.status_code == 400:
+                st.error("❌ Invalid query. Please check your search parameters.")
+                return None
+            else:
+                st.error(f"❌ API Error {response.status_code}. Please try again.")
+                return None
+    except requests.Timeout:
+        st.error("❌ Request timed out. OpenStreetMap API is slow. Please try again.")
+        return None
     except Exception as e:
-        st.error(f"Error fetching places: {str(e)}")
+        st.error(f"❌ Error: {str(e)}")
         return None
 
 # ─── Parse Overpass Response ───────────────────────────────────────────
