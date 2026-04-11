@@ -57,33 +57,47 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
     return R * c
 
-# ─── Geolocation JavaScript ────────────────────────────────────────────
-def get_geolocation():
-    """Get user's location using browser geolocation API"""
+# ─── Continuous Geolocation Tracking ──────────────────────────────────
+def get_continuous_geolocation():
+    """JavaScript for continuous geolocation tracking while driving"""
     geolocation_script = """
     <script>
-    function getLocation() {
+    function startContinuousTracking() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                window.parent.document.getElementById("user_location_data").value =
-                    JSON.stringify({
+            // Watch position - continuous updates
+            navigator.geolocation.watchPosition(
+                function(position) {
+                    // Update location every time position changes
+                    const locationData = {
                         "latitude": position.coords.latitude,
                         "longitude": position.coords.longitude,
                         "accuracy": position.coords.accuracy,
                         "timestamp": new Date().toISOString()
-                    });
-            }, function(error) {
-                alert("Error getting location: " + error.message);
-            }, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            });
-        } else {
-            alert("Geolocation is not supported by this browser.");
+                    };
+
+                    // Store in window for Streamlit to access
+                    window.userLocation = locationData;
+
+                    // Also store in localStorage to persist across refreshes
+                    localStorage.setItem('user_location', JSON.stringify(locationData));
+
+                    console.log('Location updated:', locationData);
+                },
+                function(error) {
+                    console.error('Geolocation error:', error.message);
+                },
+                {
+                    enableHighAccuracy: true,  // GPS accuracy
+                    timeout: 5000,
+                    maximumAge: 0  // Always get fresh location
+                }
+            );
         }
     }
-    window.onload = getLocation;
+
+    // Start tracking when page loads
+    window.addEventListener('load', startContinuousTracking);
+    startContinuousTracking();
     </script>
     """
     return geolocation_script
@@ -482,9 +496,19 @@ if "places" not in st.session_state:
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🔄 Get My Location", key="location_btn"):
-        st.markdown(get_geolocation(), unsafe_allow_html=True)
-        st.info("📍 Please allow location access when prompted by your browser")
+    st.markdown(get_continuous_geolocation(), unsafe_allow_html=True)
+
+    if st.button("🔴 Start Live Tracking", key="location_btn"):
+        st.session_state.live_tracking = True
+        st.success("📍 Live location tracking started! Allow location access when prompted.")
+
+# Add auto-refresh for continuous location updates
+if "live_tracking" not in st.session_state:
+    st.session_state.live_tracking = False
+
+# Show tracking status
+if st.session_state.live_tracking:
+    st.info("🟢 **Live tracking active** - Location updates automatically as you move")
 
 # Manual location input (fallback)
 with col2:
@@ -538,9 +562,20 @@ with col3:
         step=5
     )
 
+# Auto-refresh timer for live tracking
+import time
+if st.session_state.live_tracking and "last_search_time" in st.session_state:
+    if time.time() - st.session_state.last_search_time > 30:  # Refresh every 30 seconds while driving
+        st.session_state.auto_search = True
+
 # Search button
-if st.button("🔎 Find Nearby Places", key="search_btn"):
+search_clicked = st.button("🔎 Find Nearby Places", key="search_btn")
+
+if search_clicked or st.session_state.get("auto_search", False):
     if st.session_state.user_location:
+        st.session_state.last_search_time = time.time()
+        st.session_state.auto_search = False
+
         lat = st.session_state.user_location["latitude"]
         lon = st.session_state.user_location["longitude"]
 
@@ -556,7 +591,7 @@ if st.button("🔎 Find Nearby Places", key="search_btn"):
                 if data:
                     st.session_state.places = parse_overpass_places(data, lat, lon)
     else:
-        st.warning("⚠️ Please get your location first (allow browser access or enter manually)")
+        st.warning("⚠️ Please enable live tracking or enter your location manually")
 
 # Display results
 if st.session_state.places:
