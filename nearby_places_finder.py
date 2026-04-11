@@ -652,24 +652,19 @@ if st.session_state.places:
         distance_m = place['distance_m']
         distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
 
-        # Create detailed HTML popup
-        popup_html = f"""
-        <div style="font-family: Arial; width: 250px; padding: 10px;">
-            <h3 style="margin: 0 0 10px 0; color: #333;">#{idx+1} {place['name']}</h3>
-            <hr style="margin: 5px 0;">
-            <p style="margin: 5px 0;"><strong>📍 Distance:</strong> <span style="color: #d32f2f; font-weight: bold;">{distance_str}</span></p>
-            <p style="margin: 5px 0;"><strong>⭐ Rating:</strong> {place.get('rating', 'N/A')}</p>
-            <p style="margin: 5px 0; font-size: 12px; color: #666;">
-                Lat: {place['latitude']:.4f}, Lon: {place['longitude']:.4f}
-            </p>
-        </div>
+        # Create simple text popup (HTML has issues in streamlit-folium)
+        popup_text = f"""
+#{idx+1} {place['name']}
+Distance: {distance_str}
+Rating: {place.get('rating', 'N/A')}
+Lat: {place['latitude']:.4f}, Lon: {place['longitude']:.4f}
         """
 
         folium.Marker(
             [place["latitude"], place["longitude"]],
-            popup=folium.Popup(popup_html, max_width=300),
+            popup=popup_text,
             icon=folium.Icon(color=color, icon="utensils", prefix="fa"),
-            tooltip=f"{place['name']} - {distance_str}"
+            tooltip=f"{place['name']} ({distance_str})"
         ).add_to(m)
 
     st_folium(m, width=1200, height=500)
