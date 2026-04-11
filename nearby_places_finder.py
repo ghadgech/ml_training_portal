@@ -141,9 +141,61 @@ def get_demo_places(lat, lon, place_type):
             {"name": "Capital Bank", "lat": lat - 0.002, "lon": lon - 0.002},
             {"name": "Community Bank", "lat": lat + 0.001, "lon": lon + 0.003},
         ],
+        "atm": [
+            {"name": "ATM - First National Bank", "lat": lat + 0.001, "lon": lon + 0.001},
+            {"name": "ATM - City Center", "lat": lat - 0.002, "lon": lon + 0.002},
+            {"name": "ATM - Mall Entrance", "lat": lat + 0.003, "lon": lon - 0.001},
+            {"name": "ATM - Station Square", "lat": lat - 0.001, "lon": lon - 0.003},
+            {"name": "ATM - Shopping Complex", "lat": lat + 0.004, "lon": lon + 0.002},
+        ],
+        "police": [
+            {"name": "Police Station - Downtown", "lat": lat + 0.005, "lon": lon + 0.003},
+            {"name": "Police Outpost - North", "lat": lat - 0.004, "lon": lon + 0.001},
+            {"name": "Traffic Police - Main Road", "lat": lat + 0.002, "lon": lon - 0.004},
+            {"name": "Police Station - East", "lat": lat - 0.001, "lon": lon + 0.005},
+            {"name": "Police Beat - Market Area", "lat": lat + 0.003, "lon": lon - 0.002},
+        ],
+        "fire_station": [
+            {"name": "Fire Station - Central", "lat": lat + 0.004, "lon": lon + 0.002},
+            {"name": "Fire Department - North", "lat": lat - 0.003, "lon": lon + 0.003},
+            {"name": "Fire Rescue - South", "lat": lat + 0.001, "lon": lon - 0.003},
+            {"name": "Fire Station - East", "lat": lat - 0.002, "lon": lon - 0.001},
+            {"name": "Emergency Fire - West", "lat": lat + 0.005, "lon": lon + 0.001},
+        ],
+        "supermarket": [
+            {"name": "Super Mart - Main", "lat": lat + 0.002, "lon": lon + 0.002},
+            {"name": "Great Groceries", "lat": lat - 0.001, "lon": lon + 0.001},
+            {"name": "Mega Supermarket", "lat": lat + 0.003, "lon": lon - 0.002},
+            {"name": "Price World", "lat": lat - 0.002, "lon": lon - 0.001},
+            {"name": "Family Mart", "lat": lat + 0.001, "lon": lon + 0.003},
+        ],
     }
 
     return demo_data.get(place_type.lower(), demo_data["restaurant"])
+
+# ─── Reverse Geocoding - Get place name from coordinates ────────────────
+def get_place_name(lat, lon):
+    """Get place name from coordinates using Nominatim"""
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
+        headers = {'User-Agent': 'NearbyPlacesFinder/1.0'}
+        response = requests.get(url, timeout=5, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            # Try to get address name
+            if "address" in data:
+                address = data["address"]
+                # Priority: city > town > village > county
+                for key in ["city", "town", "village", "county"]:
+                    if key in address:
+                        return address[key]
+            elif "name" in data:
+                return data["name"]
+    except:
+        pass
+
+    return None
 
 # ─── Fetch Places from Overpass API ────────────────────────────────────
 def fetch_nearby_places(lat, lon, place_type, radius=2000):
@@ -361,9 +413,14 @@ if st.session_state.places:
 
     # Display search summary
     st.markdown("---")
+
+    # Get place name from coordinates
+    place_name = get_place_name(user_lat, user_lon)
+    location_display = place_name if place_name else f"{user_lat:.4f}, {user_lon:.4f}"
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("📍 Your Location", f"{user_lat:.4f}, {user_lon:.4f}")
+        st.metric("📍 Your Location", location_display)
     with col2:
         st.metric("🔍 Searching For", place_type.title())
     with col3:
