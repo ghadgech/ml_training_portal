@@ -90,7 +90,7 @@ def get_geolocation():
 
 # ─── Demo Data for Testing ────────────────────────────────────────────
 def get_demo_places(lat, lon, place_type):
-    """Return demo data for testing the app"""
+    """Return category-specific demo data for testing the app"""
     demo_data = {
         "dentist": [
             {"name": "Smile Dental Clinic", "lat": lat + 0.002, "lon": lon + 0.002},
@@ -106,10 +106,40 @@ def get_demo_places(lat, lon, place_type):
             {"name": "Pizza House", "lat": lat - 0.001, "lon": lon - 0.003},
             {"name": "Sushi Bar", "lat": lat + 0.004, "lon": lon + 0.002},
         ],
+        "hotel": [
+            {"name": "Grand Hotel", "lat": lat + 0.005, "lon": lon + 0.003},
+            {"name": "Sunset Inn", "lat": lat - 0.004, "lon": lon + 0.002},
+            {"name": "Central Plaza Hotel", "lat": lat + 0.001, "lon": lon - 0.004},
+            {"name": "Luxury Suites", "lat": lat - 0.002, "lon": lon - 0.001},
+            {"name": "Budget Motel", "lat": lat + 0.003, "lon": lon + 0.001},
+        ],
         "hospital": [
             {"name": "City General Hospital", "lat": lat + 0.005, "lon": lon + 0.003},
             {"name": "St. Mary's Medical Center", "lat": lat - 0.004, "lon": lon + 0.001},
             {"name": "Emergency Care Hospital", "lat": lat + 0.002, "lon": lon - 0.004},
+            {"name": "Riverside Medical", "lat": lat + 0.001, "lon": lon + 0.005},
+            {"name": "Veterans Hospital", "lat": lat - 0.003, "lon": lon - 0.003},
+        ],
+        "pharmacy": [
+            {"name": "MediCare Pharmacy", "lat": lat + 0.002, "lon": lon + 0.001},
+            {"name": "Quick Pharmacy", "lat": lat - 0.001, "lon": lon + 0.003},
+            {"name": "Health Plus Pharmacy", "lat": lat + 0.003, "lon": lon - 0.002},
+            {"name": "24hr Pharmacy", "lat": lat - 0.002, "lon": lon - 0.001},
+            {"name": "Community Drug Store", "lat": lat + 0.004, "lon": lon + 0.002},
+        ],
+        "cafe": [
+            {"name": "Coffee Corner", "lat": lat + 0.001, "lon": lon + 0.002},
+            {"name": "Brew Haven", "lat": lat - 0.001, "lon": lon + 0.001},
+            {"name": "The Daily Cafe", "lat": lat + 0.002, "lon": lon - 0.001},
+            {"name": "Morning Glory", "lat": lat - 0.003, "lon": lon + 0.002},
+            {"name": "Bean There Coffee", "lat": lat + 0.003, "lon": lon + 0.003},
+        ],
+        "bank": [
+            {"name": "First National Bank", "lat": lat + 0.002, "lon": lon + 0.001},
+            {"name": "City Bank", "lat": lat - 0.001, "lon": lon + 0.002},
+            {"name": "Trust Bank", "lat": lat + 0.003, "lon": lon - 0.001},
+            {"name": "Capital Bank", "lat": lat - 0.002, "lon": lon - 0.002},
+            {"name": "Community Bank", "lat": lat + 0.001, "lon": lon + 0.003},
         ],
     }
 
@@ -326,23 +356,56 @@ if st.button("🔎 Find Nearby Places", key="search_btn"):
 # Display results
 if st.session_state.places:
     places = st.session_state.places
-
-    st.subheader(f"📌 Found {len(places)} nearby {place_type}s")
-
-    # Statistics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Nearest", f"{places[0]['distance_m']:.0f}m" if places[0]['distance_m'] < 1000 else f"{places[0]['distance_km']:.2f}km")
-    with col2:
-        avg_distance = sum(p["distance_km"] for p in places) / len(places)
-        st.metric("Average Distance", f"{avg_distance:.2f}km")
-    with col3:
-        st.metric("Total Found", len(places))
-
-    # Create map
-    st.subheader("🗺️ Map View")
     user_lat = st.session_state.user_location["latitude"]
     user_lon = st.session_state.user_location["longitude"]
+
+    # Display search summary
+    st.markdown("---")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📍 Your Location", f"{user_lat:.4f}, {user_lon:.4f}")
+    with col2:
+        st.metric("🔍 Searching For", place_type.title())
+    with col3:
+        st.metric("📌 Total Found", len(places))
+    with col4:
+        st.metric("⏮️ Closest", f"{places[0]['distance_m']:.0f}m" if places[0]['distance_m'] < 1000 else f"{places[0]['distance_km']:.2f}km")
+
+    st.markdown("---")
+
+    # ─── TOP 5 RESULTS (Prominent Display) ───────────────────────
+    st.subheader(f"🏆 Top 5 Nearest {place_type.title()}s")
+
+    for idx, place in enumerate(places[:5], 1):
+        distance_m = place['distance_m']
+        distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
+
+        # Color code by distance
+        if distance_m < 500:
+            color = "🟢"  # Green - very close
+        elif distance_m < 1000:
+            color = "🟡"  # Yellow - close
+        else:
+            color = "🔴"  # Red - far
+
+        st.markdown(f"""
+        <div class="distance-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4>{color} #{idx} {place['name']}</h4>
+                    <p style="margin: 0; color: #666;">Distance: <strong>{distance_str}</strong></p>
+                </div>
+                <div style="text-align: right;">
+                    <a href="https://maps.google.com/?q={place['latitude']},{place['longitude']}" target="_blank" style="text-decoration: none; padding: 8px 16px; background: #667eea; color: white; border-radius: 5px;">View Map</a>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Create map
+    st.subheader("🗺️ Map View (Top 20 Results)")
 
     m = folium.Map(
         location=[user_lat, user_lon],
@@ -350,55 +413,40 @@ if st.session_state.places:
         tiles="OpenStreetMap"
     )
 
-    # Add user location
+    # Add user location (center, blue)
     folium.Marker(
         [user_lat, user_lon],
         popup="📍 Your Location",
-        icon=folium.Icon(color="blue", icon="person"),
+        icon=folium.Icon(color="blue", icon="person", prefix="fa"),
         tooltip="You are here"
     ).add_to(m)
 
-    # Add nearby places
+    # Add nearby places (color coded by rank)
     colors = ["red", "orange", "green", "purple", "darkred", "lightred", "gray", "black"]
-    for idx, place in enumerate(places[:20]):  # Show top 20 on map
+    for idx, place in enumerate(places[:20]):
         color = colors[idx % len(colors)]
+        distance_m = place['distance_m']
+        distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
+
         folium.Marker(
             [place["latitude"], place["longitude"]],
-            popup=f"{place['name']}<br>Distance: {place['distance_m']:.0f}m",
-            icon=folium.Icon(color=color, icon="info-sign"),
-            tooltip=f"#{idx+1}: {place['name']} ({place['distance_m']:.0f}m)"
+            popup=f"<b>#{idx+1} {place['name']}</b><br>Distance: {distance_str}",
+            icon=folium.Icon(color=color, icon="map-pin", prefix="fa"),
+            tooltip=f"#{idx+1}: {place['name']} ({distance_str})"
         ).add_to(m)
 
     st_folium(m, width=1200, height=500)
 
-    # Results table
-    st.subheader("📋 Results (Sorted by Distance)")
+    # All results in expandable section
+    st.markdown("---")
+    with st.expander(f"📋 View All {len(places)} Results"):
+        st.subheader("Complete Results List (Sorted by Distance)")
+        for idx, place in enumerate(places, 1):
+            distance_m = place['distance_m']
+            distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
+            st.write(f"**#{idx}. {place['name']}** - {distance_str}")
 
-    # Display top results
-    for idx, place in enumerate(places[:30], 1):
-        distance_str = f"{place['distance_m']:.0f}m" if place['distance_m'] < 1000 else f"{place['distance_km']:.2f}km"
 
-        col1, col2, col3 = st.columns([3, 1, 1])
-        with col1:
-            st.markdown(f"**#{idx} {place['name']}**")
-        with col2:
-            st.markdown(f"**{distance_str}**")
-        with col3:
-            st.markdown(f"[📍 View on Map](https://maps.google.com/?q={place['latitude']},{place['longitude']})")
-
-    # Expandable details
-    with st.expander(f"Show all {len(places)} results"):
-        import pandas as pd
-        df = pd.DataFrame([
-            {
-                "Rank": idx + 1,
-                "Name": p["name"],
-                "Distance (km)": f"{p['distance_km']:.3f}",
-                "Distance (m)": f"{p['distance_m']:.0f}"
-            }
-            for idx, p in enumerate(places)
-        ])
-        st.dataframe(df, use_container_width=True)
 else:
     if st.session_state.user_location:
         st.info("🔍 Click 'Find Nearby Places' to search")
