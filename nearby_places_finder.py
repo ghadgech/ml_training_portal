@@ -524,7 +524,7 @@ with col2:
         "Search radius (meters)",
         min_value=500,
         max_value=5000,
-        value=2000,
+        value=5000,
         step=500
     )
 
