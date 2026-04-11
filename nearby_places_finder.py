@@ -197,8 +197,104 @@ def get_place_name(lat, lon):
 
     return None
 
-# ─── Fetch Places from Overpass API ────────────────────────────────────
-def fetch_nearby_places(lat, lon, place_type, radius=2000):
+# ─── Fetch Places from Google Places API ──────────────────────────────
+def fetch_google_places(lat, lon, place_type, radius=2000, api_key=None):
+    """Fetch nearby places from Google Places API"""
+
+    if not api_key:
+        return None
+
+    # Map place types to Google Places types
+    google_type_map = {
+        "dentist": "dentist",
+        "restaurant": "restaurant",
+        "hospital": "hospital",
+        "pharmacy": "pharmacy",
+        "hotel": "lodging",
+        "cafe": "cafe",
+        "bank": "bank",
+        "atm": "atm",
+        "police": "police",
+        "fire_station": "fire_station",
+        "parking": "parking_lot",
+        "gas_station": "gas_station",
+        "supermarket": "supermarket",
+        "grocery": "grocery_or_supermarket",
+        "clinic": "doctor",
+        "doctor": "doctor",
+    }
+
+    google_type = google_type_map.get(place_type.lower(), "restaurant")
+
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+
+    params = {
+        "location": f"{lat},{lon}",
+        "radius": radius,
+        "type": google_type,
+        "key": api_key
+    }
+
+    try:
+        with st.spinner("📍 Searching Google Places..."):
+            response = requests.get(url, params=params, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                if data["status"] == "OK":
+                    st.success("✅ Using real data from Google Places")
+                    return data
+                elif data["status"] == "ZERO_RESULTS":
+                    st.info("ℹ️ No places found in this area")
+                    return {"results": []}
+                elif data["status"] == "REQUEST_DENIED":
+                    st.error("❌ Invalid API key")
+                    return None
+                elif data["status"] == "OVER_QUERY_LIMIT":
+                    st.warning("⚠️ API quota exceeded. Try again later.")
+                    return None
+                else:
+                    st.warning(f"⚠️ API Status: {data['status']}")
+                    return None
+            else:
+                st.error(f"❌ API Error {response.status_code}")
+                return None
+
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        return None
+
+# ─── Parse Google Places Response ──────────────────────────────────────
+def parse_google_places(data, user_lat, user_lon):
+    """Parse Google Places API response and sort by distance"""
+    places = []
+
+    if not data or "results" not in data:
+        return places
+
+    for place in data["results"]:
+        location = place.get("geometry", {}).get("location", {})
+        lat = location.get("lat")
+        lon = location.get("lng")
+        name = place.get("name", "Unnamed Place")
+
+        if lat and lon:
+            distance = haversine_distance(user_lat, user_lon, lat, lon)
+            places.append({
+                "name": name,
+                "latitude": lat,
+                "longitude": lon,
+                "distance_km": distance,
+                "distance_m": distance * 1000,
+                "type": "google_place",
+                "rating": place.get("rating", 0),
+                "open_now": place.get("opening_hours", {}).get("open_now"),
+            })
+
+    # Sort by distance (proximity first)
+    places.sort(key=lambda x: x["distance_km"])
+    return places
     """Fetch nearby places using Overpass API with demo fallback"""
 
     overpass_url = "https://overpass-api.de/api/interpreter"
@@ -438,10 +534,17 @@ if st.button("🔎 Find Nearby Places", key="search_btn"):
         lat = st.session_state.user_location["latitude"]
         lon = st.session_state.user_location["longitude"]
 
-        with st.spinner(f"Searching for nearby {place_type}s..."):
-            data = fetch_nearby_places(lat, lon, place_type, search_radius)
+        # Try Google Places API first if key is available
+        if google_api_key:
+            data = fetch_google_places(lat, lon, place_type, search_radius, google_api_key)
             if data:
-                st.session_state.places = parse_overpass_places(data, lat, lon)
+                st.session_state.places = parse_google_places(data, lat, lon)
+        else:
+            # Fallback to OpenStreetMap or demo data
+            with st.spinner(f"Searching for nearby {place_type}s..."):
+                data = fetch_nearby_places(lat, lon, place_type, search_radius)
+                if data:
+                    st.session_state.places = parse_overpass_places(data, lat, lon)
     else:
         st.warning("⚠️ Please get your location first (allow browser access or enter manually)")
 
