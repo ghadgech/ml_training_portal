@@ -618,16 +618,24 @@ if st.session_state.places:
         else:
             color = "🔴"  # Red - far
 
+        # Create clickable card that opens Google Maps
+        google_maps_url = f"https://maps.google.com/?q={place['latitude']},{place['longitude']}"
+        rating_str = f"⭐ {place.get('rating', 'N/A')}" if place.get('rating') else "No rating yet"
+
         st.markdown(f"""
-        <div class="distance-card">
+        <div style="background: #f8f9fa; border: 2px solid #667eea; border-radius: 10px; padding: 15px; margin: 10px 0; cursor: pointer;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h4>{color} #{idx} {place['name']}</h4>
-                    <p style="margin: 0; color: #666;">Distance: <strong>{distance_str}</strong></p>
+                    <h3 style="margin: 0; color: #333;">
+                        {color} #{idx} <a href="{google_maps_url}" target="_blank" style="color: #667eea; text-decoration: none;">{place['name']}</a>
+                    </h3>
+                    <p style="margin: 5px 0; color: #666;">
+                        📍 <b>{distance_str}</b> away | {rating_str}
+                    </p>
                 </div>
-                <div style="text-align: right;">
-                    <a href="https://maps.google.com/?q={place['latitude']},{place['longitude']}" target="_blank" style="text-decoration: none; padding: 8px 16px; background: #667eea; color: white; border-radius: 5px;">View Map</a>
-                </div>
+                <a href="{google_maps_url}" target="_blank" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold;">
+                    View on Maps →
+                </a>
             </div>
         </div>
         """, unsafe_allow_html=True)
