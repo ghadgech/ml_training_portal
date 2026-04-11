@@ -496,33 +496,47 @@ if "places" not in st.session_state:
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown(get_continuous_geolocation(), unsafe_allow_html=True)
+    st.subheader("🌍 Quick Location Setup:")
+    st.markdown("""
+    **Option 1: Google Maps**
+    1. Open Google Maps on your phone
+    2. Tap your location (blue dot)
+    3. Copy the coordinates
+    4. Paste below
 
-    if st.button("🔴 Start Live Tracking", key="location_btn"):
-        st.session_state.live_tracking = True
-        st.success("📍 Live location tracking started! Allow location access when prompted.")
+    **Option 2: What3Words**
+    - Go to what3words.com
+    - Enter your location
+    - Convert to lat/lon
+    """)
 
-# Add auto-refresh for continuous location updates
-if "live_tracking" not in st.session_state:
-    st.session_state.live_tracking = False
-
-# Show tracking status
-if st.session_state.live_tracking:
-    st.info("🟢 **Live tracking active** - Location updates automatically as you move")
+    if st.button("❓ What's my location?", key="help_loc_btn"):
+        st.info("""
+        **Find your current location:**
+        1. Google Maps → Tap blue dot → Copy coordinates
+        2. Or visit: https://www.latlong.net/ (shows your location)
+        3. Or ask: "What is my location?" in Google Maps
+        """)
 
 # Manual location input (fallback)
 with col2:
-    st.subheader("Or enter location manually:")
-    manual_lat = st.number_input("Latitude", value=0.0, format="%.6f")
-    manual_lon = st.number_input("Longitude", value=0.0, format="%.6f")
+    st.subheader("📍 Or enter location manually:")
+    col_lat, col_lon = st.columns(2)
 
-    if st.button("Use Manual Location"):
+    with col_lat:
+        manual_lat = st.number_input("Latitude", value=0.0, format="%.6f", key="lat_input")
+
+    with col_lon:
+        manual_lon = st.number_input("Longitude", value=0.0, format="%.6f", key="lon_input")
+
+    if st.button("✅ Set Location", key="manual_loc_btn"):
         st.session_state.user_location = {
             "latitude": manual_lat,
             "longitude": manual_lon,
             "accuracy": None,
             "timestamp": datetime.now().isoformat()
         }
+        st.success(f"📍 Location set to: {manual_lat}, {manual_lon}")
 
 # Place type search
 st.subheader("🔍 Search for Places")
