@@ -576,20 +576,9 @@ with col3:
         step=5
     )
 
-# Auto-refresh timer for live tracking
-import time
-if st.session_state.live_tracking and "last_search_time" in st.session_state:
-    if time.time() - st.session_state.last_search_time > 30:  # Refresh every 30 seconds while driving
-        st.session_state.auto_search = True
-
 # Search button
-search_clicked = st.button("🔎 Find Nearby Places", key="search_btn")
-
-if search_clicked or st.session_state.get("auto_search", False):
+if st.button("🔎 Find Nearby Places", key="search_btn"):
     if st.session_state.user_location:
-        st.session_state.last_search_time = time.time()
-        st.session_state.auto_search = False
-
         lat = st.session_state.user_location["latitude"]
         lon = st.session_state.user_location["longitude"]
 
