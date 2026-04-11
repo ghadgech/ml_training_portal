@@ -528,6 +528,16 @@ with col2:
         step=500
     )
 
+col3, _ = st.columns([1, 1])
+with col3:
+    results_count = st.number_input(
+        "Results to show",
+        min_value=5,
+        max_value=50,
+        value=10,
+        step=5
+    )
+
 # Search button
 if st.button("🔎 Find Nearby Places", key="search_btn"):
     if st.session_state.user_location:
@@ -584,10 +594,11 @@ if st.session_state.places:
 
     st.markdown("---")
 
-    # ─── TOP 5 RESULTS (Prominent Display) ───────────────────────
-    st.subheader(f"🏆 Top 5 Nearest {place_type.title()}s")
+    # ─── TOP N RESULTS (Prominent Display) ───────────────────────
+    st.subheader(f"🏆 Top {min(results_count, len(places))} Nearest {place_type.title()}s")
 
-    for idx, place in enumerate(places[:5], 1):
+    # Display results in a scrollable container
+    for idx, place in enumerate(places[:results_count], 1):
         distance_m = place['distance_m']
         distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
 
@@ -616,7 +627,7 @@ if st.session_state.places:
     st.markdown("---")
 
     # Create map
-    st.subheader("🗺️ Map View (Top 20 Results)")
+    st.subheader(f"🗺️ Map View (Top {map_limit} Results)")
 
     m = folium.Map(
         location=[user_lat, user_lon],
@@ -633,28 +644,32 @@ if st.session_state.places:
     ).add_to(m)
 
     # Add nearby places (color coded by rank)
-    colors = ["red", "orange", "green", "purple", "darkred", "lightred", "gray", "black"]
-    for idx, place in enumerate(places[:20]):
+    colors = ["red", "orange", "green", "purple", "darkred", "lightred", "gray", "black", "blue", "pink"]
+    map_limit = min(results_count + 10, len(places))  # Show a few more than selected
+
+    for idx, place in enumerate(places[:map_limit]):
         color = colors[idx % len(colors)]
         distance_m = place['distance_m']
         distance_str = f"{distance_m:.0f}m" if distance_m < 1000 else f"{distance_m/1000:.2f}km"
 
-        # Create popup with HTML for better formatting
-        popup_text = f"""
-        <div style="font-family: Arial; width: 200px;">
-            <h4 style="margin: 5px 0;">#{idx+1} {place['name']}</h4>
-            <p style="margin: 5px 0;"><strong>Distance:</strong> {distance_str}</p>
+        # Create detailed HTML popup
+        popup_html = f"""
+        <div style="font-family: Arial; width: 250px; padding: 10px;">
+            <h3 style="margin: 0 0 10px 0; color: #333;">#{idx+1} {place['name']}</h3>
+            <hr style="margin: 5px 0;">
+            <p style="margin: 5px 0;"><strong>📍 Distance:</strong> <span style="color: #d32f2f; font-weight: bold;">{distance_str}</span></p>
+            <p style="margin: 5px 0;"><strong>⭐ Rating:</strong> {place.get('rating', 'N/A')}</p>
             <p style="margin: 5px 0; font-size: 12px; color: #666;">
-                Coordinates: {place['latitude']:.6f}, {place['longitude']:.6f}
+                Lat: {place['latitude']:.4f}, Lon: {place['longitude']:.4f}
             </p>
         </div>
         """
 
         folium.Marker(
             [place["latitude"], place["longitude"]],
-            popup=folium.Popup(popup_text, max_width=250),
-            icon=folium.Icon(color=color, icon="map-pin", prefix="fa"),
-            tooltip=folium.Tooltip(f"{place['name']} - {distance_str}", sticky=False)
+            popup=folium.Popup(folium.Html(popup_html, script=False), max_width=300),
+            icon=folium.Icon(color=color, icon="utensils", prefix="fa"),
+            tooltip=f"{place['name']} - {distance_str}"
         ).add_to(m)
 
     st_folium(m, width=1200, height=500)
