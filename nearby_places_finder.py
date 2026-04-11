@@ -667,7 +667,7 @@ if st.session_state.places:
 
         folium.Marker(
             [place["latitude"], place["longitude"]],
-            popup=folium.Popup(folium.Html(popup_html, script=False), max_width=300),
+            popup=folium.Popup(popup_html, max_width=300),
             icon=folium.Icon(color=color, icon="utensils", prefix="fa"),
             tooltip=f"{place['name']} - {distance_str}"
         ).add_to(m)
