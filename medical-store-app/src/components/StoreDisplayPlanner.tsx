@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Edit2, Save, X, Plus } from 'lucide-react';
+import { Edit2, X } from 'lucide-react';
 import { getBills, getProducts } from '../storage';
 import '../styles/StoreDisplayPlanner.css';
 
