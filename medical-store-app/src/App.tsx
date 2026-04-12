@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Package, Users, Calendar, ShoppingCart, TrendingUp } from 'lucide-react';
+import { BarChart3, Package, Users, Calendar, ShoppingCart, TrendingUp, Layout } from 'lucide-react';
 import { initializeStorage } from './storage';
 import POSSystem from './components/POSSystem';
 import InventoryManager from './components/InventoryManager';
 import SalesDashboard from './components/SalesDashboard';
 import CustomerManager from './components/CustomerManager';
 import AppointmentManager from './components/AppointmentManager';
+import StoreDisplayPlanner from './components/StoreDisplayPlanner';
 import './App.css';
 
-type Tab = 'dashboard' | 'pos' | 'inventory' | 'customers' | 'appointments';
+type Tab = 'dashboard' | 'pos' | 'inventory' | 'customers' | 'appointments' | 'display';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -23,6 +24,7 @@ function App() {
     { id: 'inventory' as Tab, label: 'Inventory', icon: Package },
     { id: 'customers' as Tab, label: 'Customers', icon: Users },
     { id: 'appointments' as Tab, label: 'Appointments', icon: Calendar },
+    { id: 'display' as Tab, label: 'Store Layout', icon: Layout },
   ];
 
   return (
@@ -59,6 +61,7 @@ function App() {
         {activeTab === 'inventory' && <InventoryManager />}
         {activeTab === 'customers' && <CustomerManager />}
         {activeTab === 'appointments' && <AppointmentManager />}
+        {activeTab === 'display' && <StoreDisplayPlanner />}
       </main>
     </div>
   );
