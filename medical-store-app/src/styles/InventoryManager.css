@@ -1,0 +1,72 @@
+.inventory-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.inventory-header .card-title {
+    margin: 0;
+}
+
+.alert {
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.alert-warning {
+    background: #fff8dc;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert strong {
+    font-weight: 600;
+}
+
+.margin-info {
+    margin: 16px 0;
+    padding: 12px;
+    background: #f0f7ff;
+    border-left: 3px solid #667eea;
+    font-size: 14px;
+    color: #333;
+}
+
+.low-stock {
+    background: #fff5f5;
+}
+
+.stock-warning {
+    color: #ff6b6b;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .inventory-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .table {
+        font-size: 13px;
+    }
+
+    .table th,
+    .table td {
+        padding: 8px;
+    }
+}

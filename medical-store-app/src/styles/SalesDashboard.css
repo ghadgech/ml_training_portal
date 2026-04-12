@@ -1,0 +1,115 @@
+.sales-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.metric-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.metric-box.wide {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.metric {
+    padding: 16px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+}
+
+.metric-value.profit {
+    color: #51cf66;
+}
+
+.metric-value.large {
+    font-size: 28px;
+}
+
+.profit-text {
+    color: #51cf66;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 6px;
+}
+
+.product-rank {
+    font-weight: 700;
+    color: #667eea;
+    font-size: 16px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.product-details {
+    flex: 1;
+}
+
+.product-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.product-meta {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+}
+
+.product-revenue {
+    font-weight: 700;
+    color: #51cf66;
+    font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+    .metric-box {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-box.wide {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .metric-box.wide {
+        grid-template-columns: 1fr;
+    }
+}
