@@ -289,15 +289,105 @@ def show_overview():
                     st.session_state.page = "edit"
                     st.rerun()
 
+def show_csv_import():
+    """CSV import for usage data from billing pages"""
+    st.markdown('<div class="section-header">📥 Import Usage Data from CSV</div>', unsafe_allow_html=True)
+
+    subs = load_subscriptions()
+    if not subs:
+        st.info("Add subscriptions first before importing usage data.")
+        return
+
+    uploaded_file = st.file_uploader("Upload CSV from billing page (Anthropic, OpenAI, etc.)", type="csv")
+
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+
+            st.write("**📋 CSV Preview:**")
+            st.dataframe(df.head(10), use_container_width=True)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_sub = st.selectbox(
+                    "Which subscription is this data for?",
+                    options=subs,
+                    format_func=lambda x: f"{x['icon']} {x['service']} ({x['provider']})",
+                    key="csv_sub_select"
+                )
+
+            with col2:
+                st.write("**Available columns in CSV:**")
+                columns = list(df.columns)
+                for col in columns:
+                    st.write(f"• {col}")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                usage_col = st.selectbox(
+                    "Which column has usage data?",
+                    options=columns,
+                    help="Select the column that contains usage %, tokens used, API calls, etc."
+                )
+
+            with col2:
+                # Try to extract a numeric value
+                if usage_col and usage_col in df.columns:
+                    latest_val = df[usage_col].iloc[-1] if len(df) > 0 else 0
+                    st.write(f"**Latest value:** {latest_val}")
+
+                    # Try to convert to percentage
+                    try:
+                        if isinstance(latest_val, str):
+                            usage_num = float(latest_val.strip('%')) if '%' in str(latest_val) else float(latest_val)
+                        else:
+                            usage_num = float(latest_val)
+
+                        # Cap at 100%
+                        usage_num = min(100, max(0, usage_num))
+                        st.write(f"**Parsed as:** {usage_num}%")
+                    except:
+                        usage_num = 0
+
+            if st.button("✅ Update Subscription", use_container_width=True):
+                try:
+                    if isinstance(latest_val, str):
+                        usage_num = float(latest_val.strip('%')) if '%' in str(latest_val) else float(latest_val)
+                    else:
+                        usage_num = float(latest_val)
+                    usage_num = min(100, max(0, usage_num))
+
+                    # Update subscription
+                    for s in subs:
+                        if s['id'] == selected_sub['id']:
+                            s['usage_percent'] = int(usage_num)
+                            s['notes'] = f"Updated {date.today().isoformat()} from CSV import"
+                            break
+
+                    save_subscriptions(subs)
+                    st.success(f"✓ Updated {selected_sub['service']} usage to {int(usage_num)}%!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error parsing usage data: {e}")
+
+        except Exception as e:
+            st.error(f"Error reading CSV: {e}")
+
 def show_subscriptions():
     """Subscriptions management page"""
     st.subheader("📋 My Subscriptions")
 
     subs = load_subscriptions()
 
-    if st.button("➕ Add New Subscription", use_container_width=True):
-        st.session_state.page = "add"
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("➕ Add New Subscription", use_container_width=True):
+            st.session_state.page = "add"
+            st.rerun()
+    with col2:
+        if st.button("📥 Import CSV Data", use_container_width=True):
+            st.session_state.page = "csv_import"
+            st.rerun()
 
     if not subs:
         st.info("No subscriptions yet. Click 'Add New Subscription' to get started!")
@@ -673,6 +763,9 @@ def main():
     elif st.session_state.page == 'subscriptions':
         st.title("📋 My Subscriptions")
         show_subscriptions()
+    elif st.session_state.page == 'csv_import':
+        st.title("📥 Import Usage Data")
+        show_csv_import()
     elif st.session_state.page in ('add', 'edit'):
         show_add_edit()
     elif st.session_state.page == 'analytics':
