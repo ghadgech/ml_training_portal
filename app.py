@@ -12,6 +12,7 @@ from openpyxl.utils import get_column_letter
 from openai import OpenAI
 import streamlit.components.v1 as components
 import re
+from music_marketing import show_music_marketing
 
 st.set_page_config(page_title="ML Training Portal", page_icon="🤖", layout="wide", initial_sidebar_state="expanded")
 
@@ -1619,7 +1620,7 @@ else:
         st.markdown("---")
         menu = ["🏠 Home", "📚 Course Content", "🖥️ Presentation", "🧩 Mind Map",
                 "📝 Pre Quiz", "✅ Post Quiz", "📊 My Results",
-                "🎙️ Podcast"]
+                "🎙️ Podcast", "🎵 Music Marketing"]
         if is_instructor(st.session_state.username):
             menu.append("🎓 Instructor Dashboard")
         menu.append("🤖 AI Tutor")
@@ -1646,6 +1647,8 @@ else:
         show_mind_map()
     elif page == "🎙️ Podcast":
         show_podcast()
+    elif page == "🎵 Music Marketing":
+        show_music_marketing()
     elif page == "🎓 Instructor Dashboard":
         show_instructor_dashboard()
     elif page == "🤖 AI Tutor":
